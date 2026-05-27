@@ -17,7 +17,7 @@
                 <i class="fa-solid fa-truck-ramp-box text-2xl"></i>
                 <div>
                     <h1 class="text-xl font-bold">優品360 收貨管理工作平台</h1>
-                    <p class="text-xs text-red-100">管理端 · 上傳 CSV / 設定受權碼 / QR Code</p>
+                    <p class="text-xs text-red-100">管理端 · 上傳 CSV / 設定受權碼 / 生成同步 QR Code</p>
                 </div>
             </div>
             <div class="flex gap-2 text-xs">
@@ -116,9 +116,9 @@
                     </button>
                 </div>
 
-                <!-- QR Code 打印 -->
+                <!-- QR Code 打印（卸貨區張貼用） -->
                 <div class="bg-white rounded-xl shadow p-6">
-                    <h2 class="font-bold text-red-600 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-qrcode"></i> 打印 QR Code</h2>
+                    <h2 class="font-bold text-red-600 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-qrcode"></i> 卸貨區 QR Code</h2>
                     <p class="text-xs text-gray-500 mb-3">張貼於卸貨區入口，司機掃碼即進入取籌頁面</p>
                     <div id="qrcode-container" class="flex justify-center p-4 bg-white rounded-xl border">
                         <div id="qrcode"></div>
@@ -142,7 +142,7 @@
                                     <th class="p-3 text-left font-bold">供應商</th>
                                     <th class="p-3 text-left font-bold">預約時間</th>
                                     <th class="p-3 text-left font-bold">貨板數</th>
-                                <th
+                                </tr>
                             </thead>
                             <tbody id="po-table" class="divide-y divide-slate-100"></tbody>
                         </table>
@@ -150,7 +150,7 @@
                 </div>
             </div>
 
-            <!-- 右欄：日誌 + 同步碼 -->
+            <!-- 右欄：日誌 + 同步碼生成 -->
             <div class="space-y-6">
                 <div class="bg-white rounded-xl shadow p-6">
                     <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-clock-rotate-left"></i> 核驗日誌</h2>
@@ -168,24 +168,27 @@
                                     <th class="p-2 text-left">PO No</th>
                                     <th class="p-2 text-left">狀態</th>
                                     <th class="p-2 text-left">受權碼</th>
-                                 </tr>
+                                </tr>
                             </thead>
                             <tbody id="log-table"></tbody>
-                         </table>
+                        </table>
                     </div>
                 </div>
                 
-                <!-- 同步碼生成卡片 -->
+                <!-- 同步碼生成卡片（司機用手機掃 QR Code 同步） -->
                 <div class="bg-white rounded-xl shadow p-6">
                     <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-share-alt"></i> 司機同步設定</h2>
+                    <p class="text-xs text-gray-500 mb-3">生成同步 QR Code，司機用手機掃描即可載入最新預約資料</p>
                     <button onclick="generateSyncCode()" class="w-full bg-blue-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-qrcode"></i> 生成同步碼
+                        <i class="fa-solid fa-qrcode"></i> 生成同步 QR Code
                     </button>
+                    
                     <div id="sync-code-display" class="hidden mt-4 p-4 bg-blue-50 rounded-lg text-center">
-                        <div class="text-xs text-blue-600 mb-1">司機同步碼（有效期5分鐘）</div>
-                        <div id="sync-code-value" class="text-3xl font-mono font-bold tracking-wider text-blue-800">ABC123</div>
-                        <button onclick="copySyncCode()" class="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-xs">複製</button>
-                        <p class="text-xs text-gray-500 mt-2">司機在司機端點擊「手動同步」→「輸入同步碼」即可</p>
+                        <div class="text-xs text-blue-600 mb-1">司機掃描下方 QR Code 同步</div>
+                        <div id="sync-qrcode" class="flex justify-center my-3"></div>
+                        <div id="sync-code-value" class="text-2xl font-mono font-bold tracking-wider text-blue-800 mb-2"></div>
+                        <div id="sync-link" class="text-center text-xs break-all text-blue-600"></div>
+                        <p class="text-xs text-gray-500 mt-2">有效期 5 分鐘，司機掃碼後自動載入資料</p>
                     </div>
                 </div>
 
@@ -269,7 +272,7 @@
             updateCounterDisplay();
         }
 
-        // ==================== 同步碼生成 ====================
+        // ==================== 同步碼生成（4位 + QR Code）====================
         function generateSyncCode() {
             let syncData = {
                 database: database,
@@ -280,33 +283,56 @@
                 timestamp: new Date().toISOString()
             };
             
-            // 👇 改為 4 位隨機碼
+            // 將資料轉為 Base64 編碼（適合放入 URL）
+            let jsonStr = JSON.stringify(syncData);
+            let encodedData = btoa(encodeURIComponent(jsonStr));
+            
+            // 4 位同步碼
             let syncCode = Math.random().toString(36).substring(2, 6).toUpperCase();
             
+            // 儲存到 localStorage（備用）
             localStorage.setItem(`優品360_sync_${syncCode}`, JSON.stringify(syncData));
             
-            setTimeout(() => {
-                localStorage.removeItem(`優品360_sync_${syncCode}`);
-                let displayDiv = document.getElementById('sync-code-display');
-                if (displayDiv && !displayDiv.classList.contains('hidden')) {
-                    showToast('⚠️ 同步碼已過期，請重新生成');
-                    displayDiv.classList.add('hidden');
-                }
-            }, 300000);
+            // 生成完整連結
+            let driverBaseUrl = `https://alexlam50.github.io/360_car_booking/driver.html`;
+            let syncUrl = `${driverBaseUrl}?sync=${encodedData}&code=${syncCode}`;
             
+            // 顯示同步資訊
             let displayDiv = document.getElementById('sync-code-display');
             let codeSpan = document.getElementById('sync-code-value');
+            let qrContainer = document.getElementById('sync-qrcode');
+            let linkDiv = document.getElementById('sync-link');
+            
             codeSpan.innerText = syncCode;
             displayDiv.classList.remove('hidden');
             
-            showToast(`✅ 同步碼已生成：${syncCode}，有效期5分鐘`);
+            // 顯示連結
+            linkDiv.innerHTML = `<a href="${syncUrl}" target="_blank" class="text-blue-600 text-xs break-all">📋 按此複製連結</a>`;
+            
+            // 生成 QR Code
+            if (qrContainer) {
+                qrContainer.innerHTML = '';
+                new QRCode(qrContainer, {
+                    text: syncUrl,
+                    width: 160,
+                    height: 160,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
+            
+            showToast(`✅ 同步 QR Code 已生成，有效期5分鐘`);
             addLogToArray('系統', '生成同步碼', syncCode);
-        }
-
-        function copySyncCode() {
-            let code = document.getElementById('sync-code-value').innerText;
-            navigator.clipboard.writeText(code);
-            showToast('✅ 同步碼已複製');
+            
+            // 5分鐘後自動隱藏
+            setTimeout(() => {
+                if (displayDiv && !displayDiv.classList.contains('hidden')) {
+                    displayDiv.classList.add('hidden');
+                    showToast('⚠️ 同步碼已過期，請重新生成');
+                }
+                localStorage.removeItem(`優品360_sync_${syncCode}`);
+            }, 300000);
         }
 
         // ==================== 每日自動重置 ====================
@@ -487,7 +513,7 @@
             updateLogDisplay();
         }
 
-        // ==================== 司機核驗 ====================
+        // ==================== 司機核驗（由司機端調用）====================
         function verifyAndDispatch(poNumber) {
             let record = database.find(d => d.poNo === poNumber.toUpperCase());
             if (!record) {
@@ -618,7 +644,7 @@
             }
         });
 
-        // ==================== QR Code 打印 ====================
+        // ==================== QR Code 打印（卸貨區張貼用）====================
         function generateQRCode() {
             let driverUrl = `https://alexlam50.github.io/360_car_booking/driver.html`;
             document.getElementById('qrcode').innerHTML = '';
