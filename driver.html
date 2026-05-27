@@ -6,320 +6,97 @@
     <title>優品360 司機自助取籌平台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .fade-in { animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
+    <style>.fade-in{animation:fadeIn 0.3s ease;}@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}</style>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans">
-
     <div class="bg-gradient-to-r from-red-600 to-red-500 text-white py-5 px-4 shadow-lg">
         <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <i class="fa-solid fa-truck-fast text-2xl"></i>
-                <div>
-                    <h1 class="text-xl font-bold">優品360 司機自助取籌</h1>
-                    <p class="text-xs text-red-100">請輸入 PO 單號領取受權碼</p>
-                </div>
-            </div>
-            <div class="text-right text-xs bg-white/20 px-3 py-1.5 rounded-full">
-                <i class="fa-regular fa-clock"></i> <span id="live-time">--:--:--</span>
-            </div>
+            <div class="flex items-center gap-3"><i class="fa-solid fa-truck-fast text-2xl"></i><div><h1 class="text-xl font-bold">優品360 司機自助取籌</h1><p class="text-xs text-red-100">請輸入 PO 單號領取受權碼</p></div></div>
+            <div class="text-right text-xs bg-white/20 px-3 py-1.5 rounded-full"><i class="fa-regular fa-clock"></i> <span id="live-time">--:--:--</span></div>
         </div>
     </div>
-
     <div class="max-w-md mx-auto px-4 py-6 space-y-4">
-        
         <div id="data-status-card" class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-emerald-500">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <i id="status-icon" class="fa-solid fa-database text-emerald-500"></i>
-                    <span id="data-status-text" class="text-sm font-medium">✅ 已同步</span>
-                </div>
-            </div>
+            <div class="flex items-center justify-between"><div class="flex items-center gap-2"><i id="status-icon" class="fa-solid fa-database text-emerald-500"></i><span id="data-status-text" class="text-sm font-medium">✅ 已同步</span></div></div>
             <div id="data-detail" class="text-xs text-gray-400 mt-2"></div>
         </div>
-
         <div class="bg-white rounded-2xl shadow-xl p-6">
-            <div class="text-center mb-5">
-                <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <i class="fa-solid fa-clipboard-list text-red-600 text-3xl"></i>
-                </div>
-                <h2 class="text-xl font-bold text-gray-800">輸入 PO 單號</h2>
-                <p class="text-xs text-gray-500 mt-1">系統會核對預約時段並發放受權碼</p>
-            </div>
-
-            <input type="text" id="driver-po" placeholder="例如: EPO260002047" 
-                   class="w-full border-2 border-gray-200 rounded-xl p-4 text-center text-lg font-mono uppercase focus:border-red-500 focus:outline-none transition">
-
-            <button onclick="submitQuery()" class="w-full mt-5 bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-bold text-lg transition active:scale-95 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-key"></i> 核驗並領取受權碼
-            </button>
-
+            <div class="text-center mb-5"><div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-clipboard-list text-red-600 text-3xl"></i></div><h2 class="text-xl font-bold text-gray-800">輸入 PO 單號</h2><p class="text-xs text-gray-500 mt-1">系統會核對預約時段並發放受權碼</p></div>
+            <input type="text" id="driver-po" placeholder="例如: EPO260002047" class="w-full border-2 border-gray-200 rounded-xl p-4 text-center text-lg font-mono uppercase focus:border-red-500 focus:outline-none transition">
+            <button onclick="submitQuery()" class="w-full mt-5 bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-bold text-lg transition active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-key"></i> 核驗並領取受權碼</button>
             <div id="test-buttons" class="flex flex-wrap gap-2 justify-center mt-5"></div>
         </div>
-
         <div id="result-area" class="hidden"></div>
-
-        <div class="text-center text-xs text-gray-400 py-3 border-t">
-            <i class="fa-regular fa-clock mr-1"></i> 上午預約任何時間可取碼 · 下午預約需 12:01 後
-        </div>
+        <div class="text-center text-xs text-gray-400 py-3 border-t"><i class="fa-regular fa-clock mr-1"></i> 上午預約任何時間可取碼 · 下午預約需 12:01 後</div>
     </div>
-
     <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-full shadow-lg hidden z-50 text-sm whitespace-nowrap"></div>
-
     <script>
-        // ==================== 全域變數 ====================
         let database = [];
-        let authStartAM = "A001";
-        let authStartPM = "P001";
-        let amCounter = 0;
-        let pmCounter = 0;
+        let authStartAM = "A001", authStartPM = "P001";
+        let amCounter = 0, pmCounter = 0;
         let isSynced = false;
 
-        // ==================== 時間顯示 ====================
-        function updateTime() {
-            let now = new Date();
-            document.getElementById('live-time').innerText = now.toLocaleTimeString('zh-HK');
-        }
-        setInterval(updateTime, 1000);
-        updateTime();
+        function updateTime(){ document.getElementById('live-time').innerText=new Date().toLocaleTimeString('zh-HK'); }
+        setInterval(updateTime,1000); updateTime();
 
-        // ==================== 從 URL 參數同步（最重要！）====================
-        function syncFromURL() {
-            let urlParams = new URLSearchParams(window.location.search);
-            let encodedData = urlParams.get('sync');
-            
-            if (encodedData) {
-                try {
-                    // 解碼 Base64
-                    let jsonStr = decodeURIComponent(atob(encodedData));
-                    let data = JSON.parse(jsonStr);
-                    
-                    if (data.database) database = data.database;
-                    if (data.authStartAM) authStartAM = data.authStartAM;
-                    if (data.authStartPM) authStartPM = data.authStartPM;
-                    if (data.amCounter !== undefined) amCounter = data.amCounter;
-                    if (data.pmCounter !== undefined) pmCounter = data.pmCounter;
-                    
-                    isSynced = true;
-                    
-                    // 儲存到 localStorage 方便下次使用
-                    localStorage.setItem('優品360_database', JSON.stringify(database));
-                    localStorage.setItem('優品360_auth_counter', JSON.stringify({ am: amCounter, pm: pmCounter }));
-                    
-                    updateUIAfterSync();
-                    showToast(`✅ 同步成功！已載入 ${database.length} 筆預約資料`);
-                    
-                    // 清除 URL 參數（美觀）
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    
+        function syncFromURL(){
+            let params=new URLSearchParams(window.location.search), encoded=params.get('sync');
+            if(encoded){
+                try{ let data=JSON.parse(decodeURIComponent(atob(encoded))); if(data.database) database=data.database; if(data.authStartAM) authStartAM=data.authStartAM; if(data.authStartPM) authStartPM=data.authStartPM; if(data.amCounter!==undefined) amCounter=data.amCounter; if(data.pmCounter!==undefined) pmCounter=data.pmCounter; isSynced=true;
+                    localStorage.setItem('優品360_database',JSON.stringify(database));
+                    localStorage.setItem('優品360_auth_counter',JSON.stringify({am:amCounter,pm:pmCounter}));
+                    updateUIAfterSync(); showToast(`✅ 同步成功！已載入 ${database.length} 筆資料`);
+                    window.history.replaceState({},document.title,window.location.pathname);
                     return true;
-                } catch(e) {
-                    console.error('URL 同步失敗:', e);
-                    showToast('❌ 同步連結無效');
-                }
+                }catch(e){ showToast('❌ 同步連結無效'); }
             }
-            
-            // 如果 URL 沒有參數，嘗試從 localStorage 讀取
-            let storedDB = localStorage.getItem('優品360_database');
-            if (storedDB && !isSynced) {
-                try {
-                    database = JSON.parse(storedDB);
-                    let storedCounter = localStorage.getItem('優品360_auth_counter');
-                    if (storedCounter) {
-                        let counter = JSON.parse(storedCounter);
-                        amCounter = counter.am || 0;
-                        pmCounter = counter.pm || 0;
-                    }
-                    if (database.length > 0) {
-                        isSynced = true;
-                        updateUIAfterSync();
-                        showToast(`已載入之前同步嘅 ${database.length} 筆資料`);
-                    }
-                } catch(e) {}
-            }
-            
+            let stored=localStorage.getItem('優品360_database');
+            if(stored&&!isSynced){ try{ database=JSON.parse(stored); let c=localStorage.getItem('優品360_auth_counter'); if(c){ let cnt=JSON.parse(c); amCounter=cnt.am||0; pmCounter=cnt.pm||0; } if(database.length>0){ isSynced=true; updateUIAfterSync(); showToast(`已載入之前同步嘅 ${database.length} 筆資料`); } }catch(e){} }
             return false;
         }
-
-        function updateUIAfterSync() {
-            document.getElementById('data-status-text').innerHTML = '✅ 已同步';
-            document.getElementById('status-icon').className = 'fa-solid fa-database text-emerald-500';
-            document.getElementById('data-detail').innerHTML = `已載入 ${database.length} 筆預約資料 | 受權碼範圍: ${authStartAM} ~ ${authStartPM}`;
-            document.getElementById('data-status-card').className = 'bg-white rounded-xl p-4 shadow-sm border-l-4 border-emerald-500';
+        function updateUIAfterSync(){
+            document.getElementById('data-status-text').innerHTML='✅ 已同步'; document.getElementById('status-icon').className='fa-solid fa-database text-emerald-500';
+            document.getElementById('data-detail').innerHTML=`已載入 ${database.length} 筆預約資料 | 受權碼: ${authStartAM} / ${authStartPM}`;
             updateTestButtons();
         }
-
-        function updateTestButtons() {
-            let container = document.getElementById('test-buttons');
-            if (database.length > 0) {
-                let testPOs = database.slice(0, 4).map(d => d.poNo);
-                container.innerHTML = testPOs.map(po => `
-                    <span onclick="document.getElementById('driver-po').value='${po}';submitQuery()" 
-                          class="bg-gray-100 hover:bg-red-100 hover:text-red-600 px-3 py-1.5 rounded-full text-xs font-mono cursor-pointer transition">
-                        ${po}
-                    </span>
-                `).join('');
-            } else {
-                container.innerHTML = '<span class="text-xs text-gray-400">請掃描管理端 QR Code 同步</span>';
-            }
+        function updateTestButtons(){
+            let c=document.getElementById('test-buttons');
+            if(database.length>0){ let pos=database.slice(0,4).map(d=>d.poNo); c.innerHTML=pos.map(po=>`<span onclick="document.getElementById('driver-po').value='${po}';submitQuery()" class="bg-gray-100 hover:bg-red-100 hover:text-red-600 px-3 py-1.5 rounded-full text-xs font-mono cursor-pointer">${po}</span>`).join(''); }
+            else c.innerHTML='<span class="text-xs text-gray-400">請掃描管理端 QR Code 同步</span>';
         }
-
-        // ==================== 解析時間 ====================
-        function parseTimeToHour(timeStr) {
-            if (!timeStr) return NaN;
-            let str = String(timeStr).trim();
-            let isPM = str.includes('下午') || str.includes('PM');
-            let numMatch = str.match(/\d+/g);
-            if (!numMatch) return NaN;
-            let hour = parseInt(numMatch[0]);
-            if (isPM && hour < 12) hour += 12;
-            if (numMatch[0] && numMatch[0].length === 4) hour = parseInt(numMatch[0].substring(0, 2));
-            return hour;
-        }
-
-        function formatDisplayTime(raw) {
-            if (!raw) return '-';
-            let hour = parseTimeToHour(raw);
-            if (!isNaN(hour)) return hour + ':00';
-            return String(raw);
-        }
-
-        // ==================== 獲取下一個受權碼 ====================
-        function getNextAuthCode(isPM) {
-            if (isPM) {
-                pmCounter++;
-                let number = pmCounter.toString().padStart(3, '0');
-                return `P${number}`;
-            } else {
-                amCounter++;
-                let number = amCounter.toString().padStart(3, '0');
-                return `A${number}`;
+        function parseTimeToHour(t){ if(!t) return NaN; let s=String(t).trim(), isPM=s.includes('下午'), m=s.match(/\d+/g); if(!m) return NaN; let h=parseInt(m[0]); if(isPM&&h<12) h+=12; if(m[0]&&m[0].length===4) h=parseInt(m[0].substring(0,2)); return h; }
+        function formatDisplayTime(r){ if(!r) return '-'; let h=parseTimeToHour(r); return isNaN(h)?String(r):h+':00'; }
+        function getNextAuthCode(isPM){ if(isPM){ pmCounter++; return `P${pmCounter.toString().padStart(3,'0')}`; }else{ amCounter++; return `A${amCounter.toString().padStart(3,'0')}`; } }
+        function submitQuery(){
+            let po=document.getElementById('driver-po').value.trim().toUpperCase();
+            if(!po){ showToast('請輸入 PO 單號'); return; }
+            if(!isSynced||database.length===0){ showToast('⚠️ 尚未同步資料，請掃描管理端 QR Code'); return; }
+            let record=database.find(d=>d.poNo===po), resultDiv=document.getElementById('result-area'), now=new Date(), curHour=now.getHours(), curMin=now.getMinutes(), isBefore1201=(curHour<12)||(curHour===12&&curMin===0), timeStr=now.toLocaleTimeString('zh-HK');
+            function addLog(status,remark){
+                let logs=JSON.parse(localStorage.getItem('優品360_logs')||'[]');
+                logs.unshift({time:timeStr,po:po,status:status,remark:remark}); if(logs.length>100) logs.pop();
+                localStorage.setItem('優品360_logs',JSON.stringify(logs));
+                let stats=JSON.parse(localStorage.getItem('優品360_stats')||'{"approved":0,"rejected":0}');
+                if(status.includes('核准')) stats.approved++; else if(status.includes('拒絕')||status.includes('查無')) stats.rejected++;
+                localStorage.setItem('優品360_stats',JSON.stringify(stats));
+                localStorage.setItem('優品360_last_update',new Date().toISOString());
             }
+            if(!record){
+                resultDiv.innerHTML=`<div class="bg-white rounded-2xl p-6 text-center shadow-lg fade-in"><i class="fa-solid fa-circle-question text-5xl text-gray-400"></i><p class="mt-3 font-bold text-gray-700">查無此 PO 單號</p><button onclick="closeResult()" class="mt-4 bg-gray-800 text-white px-5 py-2 rounded-lg text-sm">返回</button></div>`;
+                resultDiv.classList.remove('hidden'); addLog('❌ 查無單據','PO不在預約列表中'); return;
+            }
+            let isPM=record.hour>=12, authCode=getNextAuthCode(isPM);
+            localStorage.setItem('優品360_auth_counter',JSON.stringify({am:amCounter,pm:pmCounter}));
+            if(isPM&&isBefore1201){
+                resultDiv.innerHTML=`<div class="bg-white rounded-2xl p-6 text-center shadow-lg fade-in"><i class="fa-solid fa-circle-xmark text-5xl text-red-500"></i><p class="mt-3 font-bold text-red-600">不符合預約時間</p><p class="text-sm mt-1">下午預約需於中午 12:01 後才能取碼</p><button onclick="closeResult()" class="mt-4 bg-gray-800 text-white px-5 py-2 rounded-lg text-sm">返回</button></div>`;
+                resultDiv.classList.remove('hidden'); addLog('⏰ 拒絕取籌','下午單早到 (12:01前)'); return;
+            }
+            resultDiv.innerHTML=`<div class="bg-white rounded-2xl p-6 text-center shadow-lg fade-in"><i class="fa-solid fa-circle-check text-5xl text-emerald-500"></i><p class="mt-3 font-bold text-emerald-600">驗證通過</p><div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-5 mt-4"><div class="text-xs text-gray-500">排隊機受權碼</div><div class="text-5xl font-mono font-bold text-gray-800 my-2">${authCode}</div><div class="text-[10px] text-gray-400">請於現場排隊機輸入此密碼</div></div><div class="mt-4 text-left text-sm bg-gray-50 rounded-xl p-4"><div class="flex justify-between py-1"><span class="text-gray-500">PO 單號：</span><span class="font-mono font-bold">${record.poNo}</span></div><div class="flex justify-between py-1"><span class="text-gray-500">供應商：</span><span>${record.supplier}</span></div><div class="flex justify-between py-1"><span class="text-gray-500">預約時間：</span><span>${formatDisplayTime(record.timeVal)}</span></div><div class="flex justify-between py-1"><span class="text-gray-500">貨板數量：</span><span>${record.pallets} 板</span></div></div><button onclick="closeResult()" class="mt-4 bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm w-full">繼續取籌</button></div>`;
+            resultDiv.classList.remove('hidden'); addLog('✅ 核准取籌',authCode); showToast(`取籌成功！受權碼：${authCode}`);
         }
-
-        // ==================== 提交核驗 ====================
-        function submitQuery() {
-            let po = document.getElementById('driver-po').value.trim().toUpperCase();
-            if (!po) {
-                showToast('請輸入 PO 單號');
-                return;
-            }
-
-            if (!isSynced || database.length === 0) {
-                showToast('⚠️ 尚未同步資料，請掃描管理端 QR Code');
-                return;
-            }
-
-            let record = database.find(d => d.poNo === po);
-            let resultDiv = document.getElementById('result-area');
-            let now = new Date();
-            let currentHour = now.getHours();
-            let currentMinute = now.getMinutes();
-            let isBefore1201 = (currentHour < 12) || (currentHour === 12 && currentMinute === 0);
-            let timeStr = now.toLocaleTimeString('zh-HK');
-
-            function addLog(status, remark) {
-                let logs = JSON.parse(localStorage.getItem('優品360_logs') || '[]');
-                logs.unshift({ time: timeStr, po: po, status: status, remark: remark });
-                if (logs.length > 100) logs.pop();
-                localStorage.setItem('優品360_logs', JSON.stringify(logs));
-                
-                let stats = JSON.parse(localStorage.getItem('優品360_stats') || '{"approved":0,"rejected":0}');
-                if (status.includes('核准')) stats.approved++;
-                else if (status.includes('拒絕') || status.includes('查無')) stats.rejected++;
-                localStorage.setItem('優品360_stats', JSON.stringify(stats));
-                localStorage.setItem('優品360_last_update', new Date().toISOString());
-            }
-
-            if (!record) {
-                resultDiv.innerHTML = `
-                    <div class="bg-white rounded-2xl p-6 text-center shadow-lg fade-in">
-                        <i class="fa-solid fa-circle-question text-5xl text-gray-400"></i>
-                        <p class="mt-3 font-bold text-gray-700">查無此 PO 單號</p>
-                        <p class="text-xs text-gray-400 mt-1">請確認單號是否正確</p>
-                        <button onclick="closeResult()" class="mt-4 bg-gray-800 text-white px-5 py-2 rounded-lg text-sm">返回</button>
-                    </div>
-                `;
-                resultDiv.classList.remove('hidden');
-                addLog('❌ 查無單據', 'PO不在預約列表中');
-                return;
-            }
-
-            let isPM = record.hour >= 12;
-            let authCode = getNextAuthCode(isPM);
-            
-            localStorage.setItem('優品360_auth_counter', JSON.stringify({ am: amCounter, pm: pmCounter }));
-
-            if (isPM && isBefore1201) {
-                resultDiv.innerHTML = `
-                    <div class="bg-white rounded-2xl p-6 text-center shadow-lg fade-in">
-                        <i class="fa-solid fa-circle-xmark text-5xl text-red-500"></i>
-                        <p class="mt-3 font-bold text-red-600">不符合預約時間</p>
-                        <p class="text-sm mt-1">下午預約需於中午 12:01 後才能取碼</p>
-                        <button onclick="closeResult()" class="mt-4 bg-gray-800 text-white px-5 py-2 rounded-lg text-sm">返回</button>
-                    </div>
-                `;
-                resultDiv.classList.remove('hidden');
-                addLog('⏰ 拒絕取籌', '下午單早到 (12:01前)');
-                return;
-            }
-
-            resultDiv.innerHTML = `
-                <div class="bg-white rounded-2xl p-6 text-center shadow-lg fade-in">
-                    <i class="fa-solid fa-circle-check text-5xl text-emerald-500"></i>
-                    <p class="mt-3 font-bold text-emerald-600">驗證通過</p>
-                    <div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-5 mt-4">
-                        <div class="text-xs text-gray-500 tracking-wider">排隊機受權碼</div>
-                        <div class="text-5xl font-mono font-bold tracking-wider text-gray-800 my-2">${authCode}</div>
-                        <div class="text-[10px] text-gray-400">請於現場排隊機輸入此密碼</div>
-                    </div>
-                    <div class="mt-4 text-left text-sm bg-gray-50 rounded-xl p-4">
-                        <div class="flex justify-between py-1"><span class="text-gray-500">PO 單號：</span><span class="font-mono font-bold">${record.poNo}</span></div>
-                        <div class="flex justify-between py-1"><span class="text-gray-500">供應商：</span><span>${record.supplier}</span></div>
-                        <div class="flex justify-between py-1"><span class="text-gray-500">預約時間：</span><span>${formatDisplayTime(record.timeVal)}</span></div>
-                        <div class="flex justify-between py-1"><span class="text-gray-500">貨板數量：</span><span>${record.pallets} 板</span></div>
-                    </div>
-                    <button onclick="closeResult()" class="mt-4 bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm w-full">繼續取籌</button>
-                </div>
-            `;
-            resultDiv.classList.remove('hidden');
-            addLog('✅ 核准取籌', authCode);
-            showToast(`取籌成功！受權碼：${authCode}`);
-        }
-
-        function closeResult() {
-            document.getElementById('result-area').classList.add('hidden');
-            document.getElementById('result-area').innerHTML = '';
-            document.getElementById('driver-po').value = '';
-            document.getElementById('driver-po').focus();
-        }
-
-        function showToast(msg) {
-            let toast = document.getElementById('toast');
-            toast.innerText = msg;
-            toast.classList.remove('hidden');
-            setTimeout(() => toast.classList.add('hidden'), 2500);
-        }
-
-        // ==================== 初始化 ====================
-        function init() {
-            syncFromURL();
-            
-            document.getElementById('driver-po').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') submitQuery();
-            });
-            
-            if (!isSynced || database.length === 0) {
-                setTimeout(() => {
-                    if (!isSynced) {
-                        showToast('📱 請掃描管理端嘅 QR Code 同步資料');
-                    }
-                }, 1000);
-            }
-        }
-
+        function closeResult(){ document.getElementById('result-area').classList.add('hidden'); document.getElementById('result-area').innerHTML=''; document.getElementById('driver-po').value=''; document.getElementById('driver-po').focus(); }
+        function showToast(m){ let t=document.getElementById('toast'); t.innerText=m; t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'),2500); }
+        function init(){ syncFromURL(); document.getElementById('driver-po').addEventListener('keypress',e=>{if(e.key==='Enter')submitQuery();}); if(!isSynced||database.length===0) setTimeout(()=>{if(!isSynced) showToast('📱 請掃描管理端嘅 QR Code 同步資料');},1000); }
         init();
     </script>
 </body>
