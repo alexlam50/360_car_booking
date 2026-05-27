@@ -150,7 +150,7 @@
                 </div>
             </div>
 
-            <!-- 右欄：日誌 -->
+            <!-- 右欄：日誌 + 同步碼 -->
             <div class="space-y-6">
                 <div class="bg-white rounded-xl shadow p-6">
                     <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-clock-rotate-left"></i> 核驗日誌</h2>
@@ -160,7 +160,7 @@
                             <i class="fa-solid fa-download"></i> 匯出 CSV
                         </button>
                     </div>
-                    <div class="overflow-x-auto max-h-96 overflow-y-auto border rounded-lg">
+                    <div class="overflow-x-auto max-h-64 overflow-y-auto border rounded-lg">
                         <table class="w-full text-xs">
                             <thead class="bg-slate-100 sticky top-0">
                                 <tr class="border-b">
@@ -171,10 +171,24 @@
                                  </tr>
                             </thead>
                             <tbody id="log-table"></tbody>
-                        </table>
+                         </table>
                     </div>
                 </div>
                 
+                <!-- 同步碼生成卡片 -->
+                <div class="bg-white rounded-xl shadow p-6">
+                    <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-share-alt"></i> 司機同步設定</h2>
+                    <button onclick="generateSyncCode()" class="w-full bg-blue-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-qrcode"></i> 生成同步碼
+                    </button>
+                    <div id="sync-code-display" class="hidden mt-4 p-4 bg-blue-50 rounded-lg text-center">
+                        <div class="text-xs text-blue-600 mb-1">司機同步碼（有效期5分鐘）</div>
+                        <div id="sync-code-value" class="text-3xl font-mono font-bold tracking-wider text-blue-800">ABC123</div>
+                        <button onclick="copySyncCode()" class="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-xs">複製</button>
+                        <p class="text-xs text-gray-500 mt-2">司機在司機端點擊「手動同步」→「輸入同步碼」即可</p>
+                    </div>
+                </div>
+
                 <!-- 重置控制 -->
                 <div class="bg-white rounded-xl shadow p-6">
                     <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-arrows-rotate"></i> 系統控制</h2>
@@ -182,7 +196,7 @@
                         <i class="fa-solid fa-trash-can"></i> 手動重置（清空所有記錄）
                     </button>
                     <p class="text-xs text-gray-400 mt-3 text-center">
-                        <i class="fa-regular fa-clock"></i> 系統每日 00:00 自動重置
+                        <i class="fa-regular fa-clock"></i> 系統每日 00:00 自動重置日誌，受權碼計數連續
                     </p>
                 </div>
             </div>
@@ -197,20 +211,18 @@
         let authStartAM = "A001";
         let authStartPM = "P001";
         let currentWarehouse = "A";
-        let amCounter = 0;      // 已派發上午受權碼數量
-        let pmCounter = 0;      // 已派發下午受權碼數量
+        let amCounter = 0;
+        let pmCounter = 0;
         let scanLogs = [];
         let stats = { approved: 0, rejected: 0 };
         
-        // 受權碼計數器儲存 key
         const COUNTER_KEY = '優品360_auth_counter';
         const SETTINGS_KEY = '優品360_auth_settings';
 
-        // ==================== 受權碼生成函數（自動+1）====================
+        // ==================== 受權碼生成 ====================
         function getNextAuthCode(isPM) {
             if (isPM) {
                 pmCounter++;
-                // 格式: P + 3位數字 (P001, P002...)
                 let number = pmCounter.toString().padStart(3, '0');
                 return `P${number}`;
             } else {
@@ -220,10 +232,8 @@
             }
         }
 
-        // 重置計數器（保留起始值設定）
         function resetCounter() {
             if (confirm('確認要重置受權碼計數器？\n\n重置後，下一個受權碼將從起始碼開始。')) {
-                // 從起始碼解析數字
                 let amMatch = authStartAM.match(/\d+/);
                 let pmMatch = authStartPM.match(/\d+/);
                 amCounter = amMatch ? parseInt(amMatch[0]) - 1 : 0;
@@ -259,6 +269,44 @@
             updateCounterDisplay();
         }
 
+        // ==================== 同步碼生成 ====================
+        function generateSyncCode() {
+            let syncData = {
+                database: database,
+                authStartAM: authStartAM,
+                authStartPM: authStartPM,
+                amCounter: amCounter,
+                pmCounter: pmCounter,
+                timestamp: new Date().toISOString()
+            };
+            
+            let syncCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+            localStorage.setItem(`優品360_sync_${syncCode}`, JSON.stringify(syncData));
+            
+            setTimeout(() => {
+                localStorage.removeItem(`優品360_sync_${syncCode}`);
+                let displayDiv = document.getElementById('sync-code-display');
+                if (displayDiv && !displayDiv.classList.contains('hidden')) {
+                    showToast('⚠️ 同步碼已過期，請重新生成');
+                    displayDiv.classList.add('hidden');
+                }
+            }, 300000);
+            
+            let displayDiv = document.getElementById('sync-code-display');
+            let codeSpan = document.getElementById('sync-code-value');
+            codeSpan.innerText = syncCode;
+            displayDiv.classList.remove('hidden');
+            
+            showToast(`✅ 同步碼已生成：${syncCode}，有效期5分鐘`);
+            addLogToArray('系統', '生成同步碼', syncCode);
+        }
+
+        function copySyncCode() {
+            let code = document.getElementById('sync-code-value').innerText;
+            navigator.clipboard.writeText(code);
+            showToast('✅ 同步碼已複製');
+        }
+
         // ==================== 每日自動重置 ====================
         function checkAutoReset() {
             let today = new Date().toDateString();
@@ -269,11 +317,8 @@
                     showToast('🔄 系統每日自動重置，已清空昨日記錄');
                     addLogToArray('系統', '自動重置', '每日00:00重置完成');
                 }
-                
-                // 重置記錄（但保留 database 和受權碼設定）
                 scanLogs = [];
                 stats = { approved: 0, rejected: 0 };
-                // 注意：不重置 amCounter/pmCounter，保持受權碼連續性
                 localStorage.setItem('優品360_last_reset_date', today);
                 syncToLocalStorage();
                 updateUI();
@@ -291,7 +336,7 @@
             }
         }
 
-        // ==================== 偵測 CSV 欄位 ====================
+        // ==================== CSV 解析 ====================
         function detectColumns(headers) {
             const patterns = {
                 poNo: [/^po\s*no$/i, /^採購單號$/i, /^單號$/i, /^po$/i, /^訂單編號$/i],
@@ -440,7 +485,7 @@
             updateLogDisplay();
         }
 
-        // ==================== 司機核驗邏輯（受權碼自動+1）====================
+        // ==================== 司機核驗 ====================
         function verifyAndDispatch(poNumber) {
             let record = database.find(d => d.poNo === poNumber.toUpperCase());
             if (!record) {
@@ -465,7 +510,6 @@
                 return { success: false, message: '下午預約需於中午12:01後取碼' };
             }
             
-            // 產生下一個受權碼
             let authCode = getNextAuthCode(isPM);
             addLogToArray(record.poNo, '✅ 核准取籌', authCode);
             stats.approved++;
@@ -476,17 +520,11 @@
             return { success: true, authCode: authCode, record: record };
         }
 
-        // 供司機端調用的接口（透過 localStorage 監聽）
-        function processDriverRequest(poNumber) {
-            return verifyAndDispatch(poNumber);
-        }
-
         // ==================== 儲存設定 ====================
         function saveAuthSettings() {
             let newAM = document.getElementById('auth-start-am').value.toUpperCase();
             let newPM = document.getElementById('auth-start-pm').value.toUpperCase();
             
-            // 驗證格式
             if (!/^[A]\d{3}$/.test(newAM)) {
                 showToast('上午受權碼格式必須為 A + 3位數字 (例如 A001)');
                 return;
@@ -500,7 +538,6 @@
             authStartPM = newPM;
             currentWarehouse = document.getElementById('warehouse-select').value;
             
-            // 重置計數器到起始值
             let amNum = parseInt(authStartAM.match(/\d+/)[0]);
             let pmNum = parseInt(authStartPM.match(/\d+/)[0]);
             amCounter = amNum - 1;
@@ -538,7 +575,6 @@
                 localStorage.setItem('優品360_logs', JSON.stringify(scanLogs.slice(0, 200)));
                 localStorage.setItem('優品360_stats', JSON.stringify(stats));
                 localStorage.setItem('優品360_last_update', new Date().toISOString());
-                // 同步受權碼計數器
                 syncCounterToStorage();
                 
                 document.getElementById('sync-status').innerHTML = '<i class="fa-regular fa-circle-check"></i> 已同步 ' + new Date().toLocaleTimeString();
@@ -564,13 +600,13 @@
             } catch(e) { console.warn(e); }
         }
 
-        // 監聽司機端請求（透過 localStorage 事件）
+        // 監聽司機端請求
         window.addEventListener('storage', (event) => {
             if (event.key === '優品360_driver_request') {
                 try {
                     let request = JSON.parse(event.newValue);
                     if (request && request.poNumber) {
-                        let result = processDriverRequest(request.poNumber);
+                        let result = verifyAndDispatch(request.poNumber);
                         localStorage.setItem('優品360_driver_response', JSON.stringify(result));
                     }
                 } catch(e) {}
