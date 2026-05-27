@@ -158,7 +158,7 @@
                     </div>
                 </div>
                 
-                <!-- 司機同步設定（修正版：確保 QR Code 正常生成） -->
+                <!-- 司機同步設定 -->
                 <div class="bg-white rounded-xl shadow p-6" id="sync-card">
                     <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-share-alt"></i> 司機同步設定</h2>
                     <p class="text-xs text-amber-600 mb-3">⚠️ 請先上傳 CSV 檔案，再點擊下方按鈕生成 QR Code</p>
@@ -177,10 +177,10 @@
                 <div class="bg-white rounded-xl shadow p-6">
                     <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-arrows-rotate"></i> 系統控制</h2>
                     <button id="manual-reset-btn" class="w-full bg-red-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-red-700 transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-trash-can"></i> 手動重置（只清空日誌，保留預約資料）
+                        <i class="fa-solid fa-trash-can"></i> 手動重置（清空所有資料）
                     </button>
                     <p class="text-xs text-gray-400 mt-3 text-center">
-                        <i class="fa-regular fa-clock"></i> 系統每日 00:00 自動重置日誌，受權碼計數連續
+                        <i class="fa-regular fa-clock"></i> 系統每日 00:00 自動重置所有資料
                     </p>
                 </div>
             </div>
@@ -228,7 +228,7 @@
             updateCounterDisplay();
         }
 
-        // ==================== 生成同步 QR Code（修正版）====================
+        // ==================== 生成同步 QR Code ====================
         function generateSyncCode() {
             if (database.length === 0) { 
                 showToast('⚠️ 請先上載 CSV 檔案後再生成同步 QR Code'); 
@@ -427,28 +427,71 @@
             let db = localStorage.getItem('優品360_database'); if (db) database = JSON.parse(db);
             let logs = localStorage.getItem('優品360_logs'); if (logs) scanLogs = JSON.parse(logs);
             let st = localStorage.getItem('優品360_stats'); if (st) stats = JSON.parse(st);
-            loadAuthSettings(); loadCounterFromStorage(); updateUI(); checkAutoReset();
+            loadAuthSettings(); loadCounterFromStorage(); updateUI();
         }
 
-        // 修正版：只清空日誌和統計，保留預約資料
-        function manualReset() {
-            if (confirm('確認重置？\n\n這將清空：\n- 核驗日誌\n- 統計數字\n\n預約資料和受權碼計數將保留。')) {
+        // ==================== 每日完整重置（每晚 00:00 清空所有資料）====================
+        function checkAutoReset() {
+            let now = new Date();
+            let today = now.toDateString();
+            let storedDate = localStorage.getItem('優品360_last_reset_date');
+            
+            // 檢查是否過了午夜 00:00（即 reset date 唔係今日）
+            if (storedDate !== today) {
+                console.log('🔄 偵測到日期變化，執行每日重置');
+                
+                // 清空所有資料
+                database = [];
                 scanLogs = [];
                 stats = { approved: 0, rejected: 0 };
+                
+                // 重置受權碼計數器（根據起始碼重新設定）
+                let amMatch = authStartAM.match(/\d+/);
+                let pmMatch = authStartPM.match(/\d+/);
+                amCounter = amMatch ? parseInt(amMatch[0]) - 1 : 0;
+                pmCounter = pmMatch ? parseInt(pmMatch[0]) - 1 : 0;
+                
+                // 更新 localStorage
                 syncToLocalStorage();
+                syncCounterToStorage();
+                
+                // 更新 UI
                 updateUI();
-                showToast('✅ 已重置日誌和統計，預約資料保留');
-                addLogToArray('系統', '手動重置', '清空日誌和統計');
+                updateCounterDisplay();
+                
+                // 儲存今日日期，避免重複重置
+                localStorage.setItem('優品360_last_reset_date', today);
+                
+                // 清空檔案上傳狀態顯示
+                document.getElementById('file-status').classList.add('hidden');
+                document.getElementById('file-name').innerText = '';
+                
+                // 顯示提示
+                showToast('🕛 每日自動重置完成，所有資料已清空，請上載新 CSV');
             }
         }
 
-        function checkAutoReset() {
-            let today = new Date().toDateString(), stored = localStorage.getItem('優品360_last_reset_date');
-            if (stored !== today) {
-                if (stored !== null) addLogToArray('系統', '自動重置', '每日00:00重置');
-                scanLogs = []; stats = { approved: 0, rejected: 0 };
-                localStorage.setItem('優品360_last_reset_date', today);
-                syncToLocalStorage(); updateUI();
+        // 手動重置（清空所有資料）
+        function manualReset() {
+            if (confirm('確認重置？\n\n這將清空：\n- 預約資料\n- 核驗日誌\n- 統計數字\n- 受權碼計數\n\n所有資料將被清空！')) {
+                database = [];
+                scanLogs = [];
+                stats = { approved: 0, rejected: 0 };
+                
+                let amMatch = authStartAM.match(/\d+/);
+                let pmMatch = authStartPM.match(/\d+/);
+                amCounter = amMatch ? parseInt(amMatch[0]) - 1 : 0;
+                pmCounter = pmMatch ? parseInt(pmMatch[0]) - 1 : 0;
+                
+                syncToLocalStorage();
+                syncCounterToStorage();
+                updateUI();
+                updateCounterDisplay();
+                
+                document.getElementById('file-status').classList.add('hidden');
+                document.getElementById('file-name').innerText = '';
+                
+                showToast('✅ 已手動重置所有資料');
             }
         }
 
@@ -485,8 +528,10 @@
         document.getElementById('generate-sync-btn').addEventListener('click', generateSyncCode);
         document.getElementById('manual-reset-btn').addEventListener('click', manualReset);
         
-        setupFileUpload(); generateQRCode(); loadFromLocalStorage(); syncDriverLogs();
-        setInterval(() => { loadFromLocalStorage(); syncDriverLogs(); checkAutoReset(); }, 3000);
+        setupFileUpload(); generateQRCode(); loadFromLocalStorage(); syncDriverLogs(); checkAutoReset();
+        
+        // 每 30 秒檢查一次是否需要重置（確保跨午夜時自動重置）
+        setInterval(() => { loadFromLocalStorage(); syncDriverLogs(); checkAutoReset(); }, 30000);
     </script>
 </body>
 </html>
