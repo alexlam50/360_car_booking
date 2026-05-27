@@ -6,9 +6,16 @@
     <title>優品360 司機自助取籌平台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .pulse { animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 0.6; } 100% { opacity: 1; } }
+    </style>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans">
 
+    <!-- 頂部標題 -->
     <div class="bg-gradient-to-r from-red-600 to-red-500 text-white py-5 px-4 shadow-lg">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -25,10 +32,21 @@
     </div>
 
     <div class="max-w-md mx-auto px-4 py-6 space-y-4">
-        <!-- 資料狀態提示 -->
-        <div id="data-status" class="bg-white rounded-xl p-3 text-center text-sm shadow-sm border-l-4 border-emerald-500">
-            <i class="fa-solid fa-database text-emerald-500 mr-2"></i>
-            <span id="data-count">等待管理端上傳資料...</span>
+        
+        <!-- 資料狀態卡片（顯示同步狀態） -->
+        <div id="data-status-card" class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-amber-500">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i id="status-icon" class="fa-solid fa-database text-amber-500"></i>
+                    <span id="data-status-text" class="text-sm font-medium">等待同步資料...</span>
+                </div>
+                <button onclick="openSyncModal()" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs flex items-center gap-1">
+                    <i class="fa-solid fa-arrows-rotate"></i> 手動同步
+                </button>
+            </div>
+            <div id="data-detail" class="text-xs text-gray-400 mt-2">
+                尚未載入預約資料
+            </div>
         </div>
 
         <!-- 取籌卡片 -->
@@ -41,34 +59,96 @@
                 <p class="text-xs text-gray-500 mt-1">系統會核對預約時段並發放受權碼</p>
             </div>
 
-            <input type="text" id="driver-po" placeholder="例如: EPO260002047" class="w-full border-2 border-gray-200 rounded-xl p-4 text-center text-lg font-mono uppercase focus:border-red-500 focus:outline-none transition">
+            <input type="text" id="driver-po" placeholder="例如: EPO260002047" 
+                   class="w-full border-2 border-gray-200 rounded-xl p-4 text-center text-lg font-mono uppercase focus:border-red-500 focus:outline-none transition">
 
             <button onclick="submitQuery()" class="w-full mt-5 bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-bold text-lg transition active:scale-95 flex items-center justify-center gap-2">
                 <i class="fa-solid fa-key"></i> 核驗並領取受權碼
             </button>
 
-            <!-- 快速測試按鈕會自動從管理端同步顯示 -->
+            <!-- 快速測試按鈕 -->
             <div id="test-buttons" class="flex flex-wrap gap-2 justify-center mt-5"></div>
         </div>
 
         <!-- 結果顯示區域 -->
         <div id="result-area" class="hidden"></div>
 
-        <!-- 提示 -->
+        <!-- 同步教學提示 -->
+        <div class="bg-blue-50 rounded-xl p-3 text-xs text-blue-700 border border-blue-200">
+            <div class="flex gap-2">
+                <i class="fa-solid fa-circle-info mt-0.5"></i>
+                <div>
+                    <p class="font-bold">📡 資料同步說明</p>
+                    <p class="mt-1">如果管理端已上傳 CSV，但手機看不到資料：</p>
+                    <ol class="list-decimal list-inside mt-1 space-y-0.5">
+                        <li>點擊上方「手動同步」按鈕</li>
+                        <li>選擇「從管理端連結同步」</li>
+                        <li>輸入管理端顯示的同步碼</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
         <div class="text-center text-xs text-gray-400 py-3 border-t">
             <i class="fa-regular fa-clock mr-1"></i> 上午預約任何時間可取碼 · 下午預約需 12:01 後
-            <div class="mt-1 text-[10px]">📡 資料與管理端即時同步</div>
         </div>
     </div>
 
+    <!-- 同步 Modal 彈窗 -->
+    <div id="sync-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-lg">📡 手動同步資料</h3>
+                <button onclick="closeSyncModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <button onclick="syncFromLocalStorage()" class="w-full bg-emerald-600 text-white py-3 rounded-xl flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-database"></i> 從本機瀏覽器同步
+                </button>
+                
+                <button onclick="syncFromQRCode()" class="w-full bg-blue-600 text-white py-3 rounded-xl flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-qrcode"></i> 掃描 QR Code 同步
+                </button>
+                
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div class="relative flex justify-center text-xs">
+                        <span class="bg-white px-2 text-gray-500">或者</span>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-xs font-bold text-gray-600">輸入管理端同步碼</label>
+                    <div class="flex gap-2 mt-1">
+                        <input type="text" id="sync-code-input" placeholder="例如: ABC123" class="flex-1 border rounded-lg p-2 text-sm font-mono">
+                        <button onclick="syncFromCode()" class="bg-gray-800 text-white px-4 rounded-lg text-sm">同步</button>
+                    </div>
+                </div>
+                
+                <button onclick="resetToDefault()" class="w-full bg-gray-200 text-gray-700 py-2 rounded-lg text-sm">
+                    重置為預設資料
+                </button>
+            </div>
+            
+            <div id="sync-status-msg" class="mt-4 text-xs text-center text-gray-500"></div>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
     <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-full shadow-lg hidden z-50 text-sm whitespace-nowrap"></div>
 
     <script>
-        // 全域變數
+        // ==================== 全域變數 ====================
         let database = [];
         let authAM = "A123", authPM = "P456";
+        let lastSyncTime = null;
 
-        // 時間顯示
+        // ==================== 時間顯示 ====================
         function updateTime() {
             let now = new Date();
             document.getElementById('live-time').innerText = now.toLocaleTimeString('zh-HK');
@@ -76,31 +156,175 @@
         setInterval(updateTime, 1000);
         updateTime();
 
-        // 從 localStorage 讀取管理端資料
-        function syncFromManager() {
+        // ==================== 同步方式 1：從 localStorage 讀取 ====================
+        function syncFromLocalStorage() {
             try {
                 let storedDB = localStorage.getItem('優品360_database');
+                let storedAuth = localStorage.getItem('優品360_auth');
+                let storedWarehouse = localStorage.getItem('優品360_warehouse');
+                
                 if (storedDB) {
                     database = JSON.parse(storedDB);
-                    let count = database.length;
-                    document.getElementById('data-count').innerHTML = `📋 已同步 ${count} 筆預約資料`;
-                    document.getElementById('data-status').className = "bg-white rounded-xl p-3 text-center text-sm shadow-sm border-l-4 border-emerald-500";
+                    document.getElementById('data-status-text').innerHTML = '✅ 資料已載入';
+                    document.getElementById('status-icon').className = 'fa-solid fa-database text-emerald-500';
+                    document.getElementById('data-detail').innerHTML = `已載入 ${database.length} 筆預約資料 | 最後同步: ${new Date().toLocaleTimeString()}`;
+                    document.getElementById('data-status-card').className = 'bg-white rounded-xl p-4 shadow-sm border-l-4 border-emerald-500';
+                    
+                    if (storedAuth) {
+                        let auth = JSON.parse(storedAuth);
+                        let warehouse = storedWarehouse || 'A';
+                        if (auth[warehouse]) {
+                            authAM = auth[warehouse].am;
+                            authPM = auth[warehouse].pm;
+                        } else if (auth.am && auth.pm) {
+                            authAM = auth.am;
+                            authPM = auth.pm;
+                        }
+                    }
+                    
                     updateTestButtons();
+                    showToast(`✅ 同步成功！已載入 ${database.length} 筆預約資料`);
+                    closeSyncModal();
+                    return true;
                 } else {
-                    document.getElementById('data-count').innerHTML = '⏳ 等待管理端上傳 CSV 檔案...';
-                    document.getElementById('data-status').className = "bg-white rounded-xl p-3 text-center text-sm shadow-sm border-l-4 border-amber-500";
+                    showToast('⚠️ 本機沒有儲存資料，請嘗試其他同步方式');
+                    document.getElementById('sync-status-msg').innerHTML = '⚠️ 本機沒有儲存資料';
+                    return false;
                 }
-                
-                let storedAuth = localStorage.getItem('優品360_auth');
-                if (storedAuth) {
-                    let auth = JSON.parse(storedAuth);
-                    authAM = auth.am;
-                    authPM = auth.pm;
-                }
-            } catch(e) { console.warn(e); }
+            } catch(e) {
+                console.warn(e);
+                showToast('同步失敗：' + e.message);
+                return false;
+            }
         }
 
-        // 更新測試按鈕（顯示資料庫中的 PO）
+        // ==================== 同步方式 2：從管理端連結讀取（透過 URL 參數）====================
+        function syncFromURL() {
+            let urlParams = new URLSearchParams(window.location.search);
+            let dataParam = urlParams.get('data');
+            
+            if (dataParam) {
+                try {
+                    let decoded = decodeURIComponent(dataParam);
+                    let parsed = JSON.parse(decoded);
+                    if (parsed.database) {
+                        database = parsed.database;
+                        if (parsed.authAM) authAM = parsed.authAM;
+                        if (parsed.authPM) authPM = parsed.authPM;
+                        updateTestButtons();
+                        showToast(`✅ 從連結同步成功！共 ${database.length} 筆資料`);
+                        updateDataStatus();
+                        return true;
+                    }
+                } catch(e) { console.warn(e); }
+            }
+            return false;
+        }
+
+        // ==================== 同步方式 3：掃描 QR Code ====================
+        function syncFromQRCode() {
+            // 提示用戶掃描管理端顯示的 QR Code
+            showToast('請掃描管理端顯示的同步 QR Code');
+            
+            // 建立一個隱藏的 input 來接收掃描結果（實際使用時可搭配手機相機）
+            let fakeScan = prompt('請輸入管理端顯示的同步碼或貼上連結：');
+            if (fakeScan) {
+                if (fakeScan.startsWith('http')) {
+                    // 從連結提取資料
+                    let url = new URL(fakeScan);
+                    let dataParam = url.searchParams.get('data');
+                    if (dataParam) {
+                        try {
+                            let parsed = JSON.parse(decodeURIComponent(dataParam));
+                            if (parsed.database) {
+                                database = parsed.database;
+                                updateTestButtons();
+                                showToast(`✅ 同步成功！共 ${database.length} 筆資料`);
+                                updateDataStatus();
+                                closeSyncModal();
+                                return;
+                            }
+                        } catch(e) {}
+                    }
+                } else {
+                    // 當作同步碼處理
+                    syncWithCode(fakeScan);
+                }
+            }
+        }
+
+        // ==================== 同步方式 4：使用同步碼 ====================
+        function syncFromCode() {
+            let code = document.getElementById('sync-code-input').value.trim();
+            if (!code) {
+                showToast('請輸入同步碼');
+                return;
+            }
+            syncWithCode(code);
+        }
+
+        function syncWithCode(code) {
+            // 嘗試從 localStorage 讀取特定 key
+            let storedData = localStorage.getItem(`優品360_sync_${code}`);
+            if (storedData) {
+                try {
+                    let data = JSON.parse(storedData);
+                    if (data.database) database = data.database;
+                    if (data.authAM) authAM = data.authAM;
+                    if (data.authPM) authPM = data.authPM;
+                    updateTestButtons();
+                    updateDataStatus();
+                    showToast(`✅ 同步碼驗證成功！共 ${database.length} 筆資料`);
+                    closeSyncModal();
+                    return;
+                } catch(e) {}
+            }
+            
+            // 如果找不到，嘗試用預設同步碼
+            if (code === 'DEMO123' || code === 'SYNC360') {
+                loadDemoData();
+                showToast('✅ 已載入示範資料');
+                closeSyncModal();
+                return;
+            }
+            
+            showToast('❌ 同步碼無效，請確認後再試');
+        }
+
+        // ==================== 更新資料狀態顯示 ====================
+        function updateDataStatus() {
+            if (database.length > 0) {
+                document.getElementById('data-status-text').innerHTML = '✅ 資料已載入';
+                document.getElementById('status-icon').className = 'fa-solid fa-database text-emerald-500';
+                document.getElementById('data-detail').innerHTML = `已載入 ${database.length} 筆預約資料 | 最後同步: ${new Date().toLocaleTimeString()}`;
+                document.getElementById('data-status-card').className = 'bg-white rounded-xl p-4 shadow-sm border-l-4 border-emerald-500';
+            } else {
+                document.getElementById('data-status-text').innerHTML = '⚠️ 等待同步資料';
+                document.getElementById('status-icon').className = 'fa-solid fa-database text-amber-500';
+                document.getElementById('data-detail').innerHTML = '尚未載入預約資料，請點擊「手動同步」';
+                document.getElementById('data-status-card').className = 'bg-white rounded-xl p-4 shadow-sm border-l-4 border-amber-500';
+            }
+        }
+
+        // ==================== 載入示範資料 ====================
+        function loadDemoData() {
+            database = [
+                { poNo: "EPO260002047", supplier: "鮮美供應有限公司", timeVal: "10", pallets: "4", hour: 10 },
+                { poNo: "EPO260002046", supplier: "和興食品", timeVal: "1430", pallets: "1", hour: 14 },
+                { poNo: "PO260005760", supplier: "恆華貿易", timeVal: "14", pallets: "4", hour: 14 },
+                { poNo: "PO260005567", supplier: "大昌行物流", timeVal: "11", pallets: "1", hour: 11 }
+            ];
+            updateTestButtons();
+            updateDataStatus();
+            showToast(`已載入 ${database.length} 筆示範資料`);
+        }
+
+        function resetToDefault() {
+            loadDemoData();
+            closeSyncModal();
+        }
+
+        // ==================== 更新測試按鈕 ====================
         function updateTestButtons() {
             let container = document.getElementById('test-buttons');
             if (database.length > 0) {
@@ -112,11 +336,11 @@
                     </span>
                 `).join('');
             } else {
-                container.innerHTML = '<span class="text-xs text-gray-400">上傳 CSV 後會顯示測試單號</span>';
+                container.innerHTML = '<span class="text-xs text-gray-400">同步後會顯示測試單號</span>';
             }
         }
 
-        // 解析時間
+        // ==================== 解析時間 ====================
         function parseTimeToHour(timeStr) {
             if (!timeStr) return NaN;
             let str = String(timeStr).trim();
@@ -136,7 +360,7 @@
             return String(raw);
         }
 
-        // 提交核驗
+        // ==================== 提交核驗 ====================
         function submitQuery() {
             let po = document.getElementById('driver-po').value.trim().toUpperCase();
             if (!po) {
@@ -144,8 +368,11 @@
                 return;
             }
 
-            // 先同步最新資料
-            syncFromManager();
+            if (database.length === 0) {
+                showToast('⚠️ 尚未同步資料，請先點擊「手動同步」');
+                openSyncModal();
+                return;
+            }
 
             let record = database.find(d => d.poNo === po);
             let resultDiv = document.getElementById('result-area');
@@ -155,7 +382,6 @@
             let isBefore1201 = (currentHour < 12) || (currentHour === 12 && currentMinute === 0);
             let timeStr = now.toLocaleTimeString('zh-HK');
 
-            // 記錄日誌用的函數
             function addLog(status, remark) {
                 let logs = JSON.parse(localStorage.getItem('優品360_logs') || '[]');
                 logs.unshift({ time: timeStr, po: po, status: status, remark: remark });
@@ -166,17 +392,15 @@
                 if (status.includes('核准')) stats.approved++;
                 else if (status.includes('拒絕') || status.includes('查無')) stats.rejected++;
                 localStorage.setItem('優品360_stats', JSON.stringify(stats));
-                
-                // 觸發 storage 事件通知管理端
                 localStorage.setItem('優品360_last_update', new Date().toISOString());
             }
 
-            if (!record || database.length === 0) {
+            if (!record) {
                 resultDiv.innerHTML = `
                     <div class="bg-white rounded-2xl p-6 text-center shadow-lg fade-in">
                         <i class="fa-solid fa-circle-question text-5xl text-gray-400"></i>
                         <p class="mt-3 font-bold text-gray-700">查無此 PO 單號</p>
-                        <p class="text-xs text-gray-400 mt-1">請確認單號是否正確，或等待管理端上傳資料</p>
+                        <p class="text-xs text-gray-400 mt-1">請確認單號是否正確</p>
                         <button onclick="closeResult()" class="mt-4 bg-gray-800 text-white px-5 py-2 rounded-lg text-sm">返回</button>
                     </div>
                 `;
@@ -194,10 +418,6 @@
                         <i class="fa-solid fa-circle-xmark text-5xl text-red-500"></i>
                         <p class="mt-3 font-bold text-red-600">不符合預約時間</p>
                         <p class="text-sm mt-1">下午預約需於中午 12:01 後才能取碼</p>
-                        <div class="mt-3 text-left text-xs bg-red-50 p-3 rounded-lg">
-                            <div>您的預約時間：${formatDisplayTime(record.timeVal)}</div>
-                            <div>目前時間：${timeStr}</div>
-                        </div>
                         <button onclick="closeResult()" class="mt-4 bg-gray-800 text-white px-5 py-2 rounded-lg text-sm">返回</button>
                     </div>
                 `;
@@ -237,6 +457,18 @@
             document.getElementById('driver-po').focus();
         }
 
+        // ==================== Modal 控制 ====================
+        function openSyncModal() {
+            document.getElementById('sync-modal').classList.remove('hidden');
+            document.getElementById('sync-code-input').value = '';
+            document.getElementById('sync-status-msg').innerHTML = '';
+        }
+
+        function closeSyncModal() {
+            document.getElementById('sync-modal').classList.add('hidden');
+        }
+
+        // ==================== Toast 提示 ====================
         function showToast(msg) {
             let toast = document.getElementById('toast');
             toast.innerText = msg;
@@ -244,28 +476,56 @@
             setTimeout(() => toast.classList.add('hidden'), 2500);
         }
 
-        // 監聽管理端更新
+        // ==================== 自動嘗試從 localStorage 同步 ====================
+        function autoSync() {
+            let storedDB = localStorage.getItem('優品360_database');
+            if (storedDB) {
+                try {
+                    let newDB = JSON.parse(storedDB);
+                    if (JSON.stringify(database) !== JSON.stringify(newDB)) {
+                        database = newDB;
+                        updateTestButtons();
+                        updateDataStatus();
+                        showToast('📡 偵測到新資料，已自動同步');
+                    }
+                } catch(e) {}
+            }
+        }
+
+        // ==================== 監聽 storage 事件 ====================
         window.addEventListener('storage', (event) => {
-            if (event.key === '優品360_database' || event.key === '優品360_auth') {
-                console.log('管理端已更新，同步中...');
-                syncFromManager();
-                showToast('📡 管理端已更新資料');
+            if (event.key === '優品360_database') {
+                autoSync();
             }
         });
 
-        // 初始化和定期同步
-        syncFromManager();
-        setInterval(syncFromManager, 5000);
+        // ==================== 初始化 ====================
+        function init() {
+            // 嘗試從 localStorage 同步
+            autoSync();
+            
+            // 嘗試從 URL 參數同步
+            syncFromURL();
+            
+            // 如果仍然沒有資料，顯示提示
+            if (database.length === 0) {
+                updateDataStatus();
+            }
+            
+            // 監聽 Enter 鍵
+            document.getElementById('driver-po').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') submitQuery();
+            });
+            
+            // 點擊 modal 背景關閉
+            document.getElementById('sync-modal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('sync-modal')) {
+                    closeSyncModal();
+                }
+            });
+        }
 
-        // 按 Enter 提交
-        document.getElementById('driver-po').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') submitQuery();
-        });
-
-        // 加入簡單動畫
-        const style = document.createElement('style');
-        style.textContent = `.fade-in { animation: fadeIn 0.3s ease; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`;
-        document.head.appendChild(style);
+        init();
     </script>
 </body>
 </html>
