@@ -17,7 +17,7 @@
                 <i class="fa-solid fa-truck-ramp-box text-2xl"></i>
                 <div>
                     <h1 class="text-xl font-bold">優品360 收貨管理工作平台</h1>
-                    <p class="text-xs text-red-100">管理端 · 上傳 CSV / 設定受權碼 / 叫號 / QR Code</p>
+                    <p class="text-xs text-red-100">管理端 · 上傳 CSV / 設定受權碼 / QR Code</p>
                 </div>
             </div>
             <div class="flex gap-2 text-xs">
@@ -51,8 +51,8 @@
                 <div class="text-3xl font-bold text-red-600" id="stat-rejected">0</div>
             </div>
             <div class="bg-white p-5 rounded-xl shadow border-l-4 border-purple-500">
-                <div class="text-sm text-slate-500">🏭 等待取籌</div>
-                <div class="text-3xl font-bold text-purple-600" id="stat-waiting">0</div>
+                <div class="text-sm text-slate-500">🔢 下一個受權碼</div>
+                <div class="text-xl font-bold text-purple-600" id="next-code-display">A001</div>
             </div>
         </div>
 
@@ -73,40 +73,46 @@
                     </div>
                 </div>
 
-                <!-- 多倉庫受權碼設定 -->
+                <!-- 受權碼設定 -->
                 <div class="bg-white rounded-xl shadow p-6">
-                    <h2 class="font-bold text-red-600 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-warehouse"></i> 多倉庫受權碼設定</h2>
-                    <div class="space-y-3">
-                        <div class="grid grid-cols-2 gap-3">
+                    <h2 class="font-bold text-red-600 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-key"></i> 受權碼設定</h2>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
                             <div class="bg-blue-50 p-3 rounded-lg">
-                                <label class="text-xs font-bold text-blue-700 block mb-1">🏭 倉庫A (上午)</label>
-                                <input type="text" id="auth-am-A" value="A123" maxlength="4" class="w-full border rounded-lg p-2 text-lg font-mono uppercase text-center">
+                                <label class="text-xs font-bold text-blue-700 block mb-1">🌅 上午起始碼</label>
+                                <input type="text" id="auth-start-am" value="A001" maxlength="4" class="w-full border rounded-lg p-2 text-lg font-mono uppercase text-center">
                             </div>
                             <div class="bg-amber-50 p-3 rounded-lg">
-                                <label class="text-xs font-bold text-amber-700 block mb-1">🏭 倉庫A (下午)</label>
-                                <input type="text" id="auth-pm-A" value="P456" maxlength="4" class="w-full border rounded-lg p-2 text-lg font-mono uppercase text-center">
+                                <label class="text-xs font-bold text-amber-700 block mb-1">🌙 下午起始碼</label>
+                                <input type="text" id="auth-start-pm" value="P001" maxlength="4" class="w-full border rounded-lg p-2 text-lg font-mono uppercase text-center">
                             </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="bg-green-50 p-3 rounded-lg">
-                                <label class="text-xs font-bold text-green-700 block mb-1">🏭 倉庫B (上午)</label>
-                                <input type="text" id="auth-am-B" value="B123" maxlength="4" class="w-full border rounded-lg p-2 text-lg font-mono uppercase text-center">
-                            </div>
-                            <div class="bg-purple-50 p-3 rounded-lg">
-                                <label class="text-xs font-bold text-purple-700 block mb-1">🏭 倉庫B (下午)</label>
-                                <input type="text" id="auth-pm-B" value="Q456" maxlength="4" class="w-full border rounded-lg p-2 text-lg font-mono uppercase text-center">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="text-xs font-bold text-slate-600 block mb-1">當前使用倉庫</label>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <label class="text-xs font-bold text-gray-600 block mb-1">🏭 倉庫選擇</label>
                             <select id="warehouse-select" class="w-full border rounded-lg p-2 text-sm">
                                 <option value="A">倉庫A</option>
                                 <option value="B">倉庫B</option>
                             </select>
                         </div>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs font-bold text-gray-600">📊 當前計數器</span>
+                                <button onclick="resetCounter()" class="text-xs bg-gray-200 px-2 py-1 rounded">重置計數</button>
+                            </div>
+                            <div class="flex gap-4 mt-2 text-center">
+                                <div class="flex-1 bg-blue-100 rounded p-2">
+                                    <div class="text-xs text-blue-600">上午已派</div>
+                                    <div class="text-xl font-bold text-blue-700" id="am-counter">0</div>
+                                </div>
+                                <div class="flex-1 bg-amber-100 rounded p-2">
+                                    <div class="text-xs text-amber-600">下午已派</div>
+                                    <div class="text-xl font-bold text-amber-700" id="pm-counter">0</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <button onclick="saveAuthCodes()" class="w-full mt-4 bg-slate-800 text-white py-3 rounded-lg text-sm font-bold hover:bg-slate-900 transition">
-                        💾 儲存受權碼設定
+                    <button onclick="saveAuthSettings()" class="w-full mt-4 bg-slate-800 text-white py-3 rounded-lg text-sm font-bold hover:bg-slate-900 transition">
+                        💾 儲存設定
                     </button>
                 </div>
 
@@ -123,12 +129,12 @@
                 </div>
             </div>
 
-            <!-- 中欄：預約總覽 + 排隊看板 -->
+            <!-- 中欄：預約總覽 -->
             <div class="space-y-6">
                 <div class="bg-white rounded-xl shadow p-6">
                     <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-table-list text-red-600"></i> 預約總覽表</h2>
                     <input type="text" id="search-input" placeholder="🔍 搜尋 PO 單號或供應商..." class="w-full border rounded-lg p-3 text-sm mb-4">
-                    <div class="overflow-x-auto max-h-80 overflow-y-auto border rounded-lg">
+                    <div class="overflow-x-auto max-h-96 overflow-y-auto border rounded-lg">
                         <table class="w-full text-sm">
                             <thead class="bg-slate-100 sticky top-0">
                                 <tr class="border-b">
@@ -136,51 +142,11 @@
                                     <th class="p-3 text-left font-bold">供應商</th>
                                     <th class="p-3 text-left font-bold">預約時間</th>
                                     <th class="p-3 text-left font-bold">貨板數</th>
-                                </tr>
+                                <th
                             </thead>
                             <tbody id="po-table" class="divide-y divide-slate-100"></tbody>
                         </table>
                     </div>
-                </div>
-
-                <!-- 排隊看板 + 叫號功能 -->
-                <div class="bg-white rounded-xl shadow p-6">
-                    <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-list-ol text-red-600"></i> 排隊叫號看板</h2>
-                    
-                    <!-- 等待列表 -->
-                    <div class="border rounded-lg p-3 mb-4">
-                        <div class="font-bold text-sm mb-2 flex justify-between items-center">
-                            <span><i class="fa-regular fa-clock text-amber-500"></i> 等待取籌司機</span>
-                            <span id="waiting-count" class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs">0</span>
-                        </div>
-                        <div id="waiting-list" class="space-y-2 max-h-48 overflow-y-auto">
-                            <div class="text-gray-400 text-center py-4 text-sm">暫無等待</div>
-                        </div>
-                    </div>
-                    
-                    <!-- 已進場列表 -->
-                    <div class="border rounded-lg p-3 mb-4">
-                        <div class="font-bold text-sm mb-2 flex justify-between items-center">
-                            <span><i class="fa-solid fa-circle-check text-emerald-500"></i> 已進場交貨</span>
-                            <span id="active-count" class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-xs">0</span>
-                        </div>
-                        <div id="active-list" class="space-y-2 max-h-32 overflow-y-auto">
-                            <div class="text-gray-400 text-center py-4 text-sm">暫無</div>
-                        </div>
-                    </div>
-
-                    <!-- 叫號控制 -->
-                    <div class="flex gap-2">
-                        <button onclick="callNextDriver()" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-bullhorn"></i> 叫下一位
-                        </button>
-                        <button onclick="speakQueueStatus()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-3 rounded-lg transition">
-                            <i class="fa-solid fa-volume-high"></i>
-                        </button>
-                    </div>
-                    <button onclick="clearQueue()" class="w-full mt-3 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-lg text-sm transition">
-                        🗑️ 清空佇列
-                    </button>
                 </div>
             </div>
 
@@ -201,8 +167,8 @@
                                     <th class="p-2 text-left">時間</th>
                                     <th class="p-2 text-left">PO No</th>
                                     <th class="p-2 text-left">狀態</th>
-                                    <th class="p-2 text-left">受權碼/備註</th>
-                                </tr>
+                                    <th class="p-2 text-left">受權碼</th>
+                                 </tr>
                             </thead>
                             <tbody id="log-table"></tbody>
                         </table>
@@ -228,12 +194,70 @@
     <script>
         // ==================== 全域變數 ====================
         let database = [];
-        let authCodes = { A: { am: "A123", pm: "P456" }, B: { am: "B123", pm: "Q456" } };
+        let authStartAM = "A001";
+        let authStartPM = "P001";
         let currentWarehouse = "A";
-        let queueList = [];      // 排隊列表 { poNo, supplier, timeVal, pallets, authCode, timestamp, status }
+        let amCounter = 0;      // 已派發上午受權碼數量
+        let pmCounter = 0;      // 已派發下午受權碼數量
         let scanLogs = [];
         let stats = { approved: 0, rejected: 0 };
-        let lastResetDate = "";
+        
+        // 受權碼計數器儲存 key
+        const COUNTER_KEY = '優品360_auth_counter';
+        const SETTINGS_KEY = '優品360_auth_settings';
+
+        // ==================== 受權碼生成函數（自動+1）====================
+        function getNextAuthCode(isPM) {
+            if (isPM) {
+                pmCounter++;
+                // 格式: P + 3位數字 (P001, P002...)
+                let number = pmCounter.toString().padStart(3, '0');
+                return `P${number}`;
+            } else {
+                amCounter++;
+                let number = amCounter.toString().padStart(3, '0');
+                return `A${number}`;
+            }
+        }
+
+        // 重置計數器（保留起始值設定）
+        function resetCounter() {
+            if (confirm('確認要重置受權碼計數器？\n\n重置後，下一個受權碼將從起始碼開始。')) {
+                // 從起始碼解析數字
+                let amMatch = authStartAM.match(/\d+/);
+                let pmMatch = authStartPM.match(/\d+/);
+                amCounter = amMatch ? parseInt(amMatch[0]) - 1 : 0;
+                pmCounter = pmMatch ? parseInt(pmMatch[0]) - 1 : 0;
+                syncCounterToStorage();
+                updateCounterDisplay();
+                showToast('✅ 計數器已重置');
+                addLogToArray('系統', '重置計數器', `AM:${authStartAM} PM:${authStartPM}`);
+            }
+        }
+
+        function updateCounterDisplay() {
+            let nextAM = `A${(amCounter + 1).toString().padStart(3, '0')}`;
+            let nextPM = `P${(pmCounter + 1).toString().padStart(3, '0')}`;
+            document.getElementById('next-code-display').innerHTML = `${nextAM} / ${nextPM}`;
+            document.getElementById('am-counter').innerText = amCounter;
+            document.getElementById('pm-counter').innerText = pmCounter;
+        }
+
+        function syncCounterToStorage() {
+            localStorage.setItem(COUNTER_KEY, JSON.stringify({ am: amCounter, pm: pmCounter }));
+        }
+
+        function loadCounterFromStorage() {
+            let stored = localStorage.getItem(COUNTER_KEY);
+            if (stored) {
+                try {
+                    let counter = JSON.parse(stored);
+                    amCounter = counter.am || 0;
+                    pmCounter = counter.pm || 0;
+                } catch(e) {}
+            }
+            updateCounterDisplay();
+        }
 
         // ==================== 每日自動重置 ====================
         function checkAutoReset() {
@@ -241,131 +265,33 @@
             let storedDate = localStorage.getItem('優品360_last_reset_date');
             
             if (storedDate !== today) {
-                // 需要重置
                 if (storedDate !== null) {
                     showToast('🔄 系統每日自動重置，已清空昨日記錄');
                     addLogToArray('系統', '自動重置', '每日00:00重置完成');
                 }
                 
-                // 重置所有記錄（但保留 database）
-                queueList = [];
+                // 重置記錄（但保留 database 和受權碼設定）
                 scanLogs = [];
                 stats = { approved: 0, rejected: 0 };
+                // 注意：不重置 amCounter/pmCounter，保持受權碼連續性
                 localStorage.setItem('優品360_last_reset_date', today);
                 syncToLocalStorage();
                 updateUI();
             }
         }
 
-        // 手動重置
         function manualReset() {
-            if (confirm('確認要重置所有記錄？\n\n這將清空：\n- 所有排隊記錄\n- 所有核驗日誌\n- 統計數字\n\n預約資料將保留。')) {
-                queueList = [];
+            if (confirm('確認要重置所有記錄？\n\n這將清空：\n- 所有核驗日誌\n- 統計數字\n\n預約資料和受權碼計數將保留。')) {
                 scanLogs = [];
                 stats = { approved: 0, rejected: 0 };
                 syncToLocalStorage();
                 updateUI();
-                showToast('✅ 已手動重置所有記錄');
-                addLogToArray('系統', '手動重置', '管理員手動清空記錄');
+                showToast('✅ 已手動重置記錄');
+                addLogToArray('系統', '手動重置', '管理員清空記錄');
             }
         }
 
-        // ==================== 叫號語音功能 ====================
-        function speak(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                let utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'zh-HK';
-                utterance.rate = 0.9;
-                window.speechSynthesis.speak(utterance);
-            }
-        }
-
-        function callNextDriver() {
-            let waiting = queueList.filter(q => q.status === 'waiting');
-            if (waiting.length === 0) {
-                showToast('目前沒有等待中的司機');
-                speak('目前沒有等待中的司機');
-                return;
-            }
-            
-            let nextDriver = waiting[0];
-            nextDriver.status = 'active';
-            nextDriver.calledTime = new Date().toLocaleTimeString();
-            
-            syncToLocalStorage();
-            updateQueueDisplay();
-            
-            let message = `請單號 ${nextDriver.poNo}，${nextDriver.supplier} 的司機，到月台卸貨。`;
-            speak(message);
-            showToast(`📢 已叫號：${nextDriver.poNo}`);
-            addLogToArray(nextDriver.poNo, '叫號進場', `語音叫號 - ${nextDriver.supplier}`);
-        }
-
-        function speakQueueStatus() {
-            let waiting = queueList.filter(q => q.status === 'waiting');
-            if (waiting.length === 0) {
-                speak('目前沒有等待中的司機');
-            } else {
-                let poList = waiting.map(q => q.poNo).join('、');
-                speak(`目前有 ${waiting.length} 位司機等候，單號包括：${poList}`);
-            }
-        }
-
-        function clearQueue() {
-            if (confirm('確認要清空所有排隊記錄？')) {
-                queueList = [];
-                syncToLocalStorage();
-                updateQueueDisplay();
-                showToast('已清空排隊佇列');
-            }
-        }
-
-        // ==================== QR Code 打印 ====================
-        function generateQRCode() {
-            let driverUrl = `https://alexlam50.github.io/360_car_booking/driver.html`;
-            document.getElementById('qrcode').innerHTML = '';
-            new QRCode(document.getElementById('qrcode'), {
-                text: driverUrl,
-                width: 180,
-                height: 180,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
-        }
-
-        function printQRCode() {
-            let qrContent = document.getElementById('qrcode').innerHTML;
-            let warehouse = currentWarehouse === 'A' ? '倉庫A' : '倉庫B';
-            let printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html>
-                <head>
-                    <title>優品360 司機取籌 QR Code</title>
-                    <style>
-                        body { font-family: sans-serif; text-align: center; padding: 40px; }
-                        .container { border: 3px solid #ef4444; padding: 30px; border-radius: 20px; display: inline-block; }
-                        h1 { color: #ef4444; margin-bottom: 5px; }
-                        .qr { margin: 20px auto; }
-                        .footer { margin-top: 20px; font-size: 14px; color: #666; }
-                    </style>
-                </head>
-                <body onload="window.print()">
-                    <div class="container">
-                        <h1>優品360 司機自助取籌</h1>
-                        <p>${warehouse} · 請掃描QR Code取籌</p>
-                        <div class="qr">${qrContent}</div>
-                        <div class="footer">掃碼後輸入PO單號領取受權碼</div>
-                        <div style="font-size: 10px; margin-top: 15px;">${new Date().toLocaleDateString()}</div>
-                    </div>
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
-        }
-
-        // ==================== 原有功能（保留並更新）====================
+        // ==================== 偵測 CSV 欄位 ====================
         function detectColumns(headers) {
             const patterns = {
                 poNo: [/^po\s*no$/i, /^採購單號$/i, /^單號$/i, /^po$/i, /^訂單編號$/i],
@@ -468,7 +394,6 @@
             document.getElementById('stat-pm').innerText = pmCount;
             renderTable();
             updateLogDisplay();
-            updateQueueDisplay();
             document.getElementById('stat-approved').innerText = stats.approved;
             document.getElementById('stat-rejected').innerText = stats.rejected;
         }
@@ -491,56 +416,6 @@
             `).join('');
         }
 
-        function updateQueueDisplay() {
-            let waiting = queueList.filter(q => q.status === 'waiting');
-            let active = queueList.filter(q => q.status === 'active');
-            
-            document.getElementById('waiting-count').innerText = waiting.length;
-            document.getElementById('active-count').innerText = active.length;
-            document.getElementById('stat-waiting').innerText = waiting.length;
-            
-            let waitingDiv = document.getElementById('waiting-list');
-            if (waiting.length === 0) {
-                waitingDiv.innerHTML = '<div class="text-gray-400 text-center py-4 text-sm">暫無等待司機</div>';
-            } else {
-                waitingDiv.innerHTML = waiting.map((q, idx) => `
-                    <div class="bg-amber-50 p-3 rounded-lg flex justify-between items-center">
-                        <div>
-                            <div class="font-bold">${idx + 1}. ${q.poNo}</div>
-                            <div class="text-xs text-gray-500">${q.supplier} | 受權碼: ${q.authCode}</div>
-                        </div>
-                        <button onclick="callSpecificDriver('${q.poNo}')" class="bg-red-600 text-white px-3 py-1 rounded text-sm">叫號</button>
-                    </div>
-                `).join('');
-            }
-            
-            let activeDiv = document.getElementById('active-list');
-            if (active.length === 0) {
-                activeDiv.innerHTML = '<div class="text-gray-400 text-center py-4 text-sm">暫無</div>';
-            } else {
-                activeDiv.innerHTML = active.map(q => `
-                    <div class="bg-emerald-50 p-3 rounded-lg">
-                        <div class="font-bold">✅ ${q.poNo}</div>
-                        <div class="text-xs text-gray-500">${q.supplier} | 貨板: ${q.pallets} | 叫號: ${q.calledTime || '-'}</div>
-                    </div>
-                `).join('');
-            }
-        }
-
-        function callSpecificDriver(poNo) {
-            let driver = queueList.find(q => q.poNo === poNo && q.status === 'waiting');
-            if (driver) {
-                driver.status = 'active';
-                driver.calledTime = new Date().toLocaleTimeString();
-                syncToLocalStorage();
-                updateQueueDisplay();
-                let message = `請單號 ${driver.poNo}，${driver.supplier} 的司機，到月台卸貨。`;
-                speak(message);
-                showToast(`📢 已叫號：${driver.poNo}`);
-                addLogToArray(driver.poNo, '叫號進場', `語音叫號 - ${driver.supplier}`);
-            }
-        }
-
         function updateLogDisplay() {
             let tbody = document.getElementById('log-table');
             if (scanLogs.length === 0) {
@@ -552,7 +427,7 @@
                     <td class="p-2 text-gray-500">${escapeHtml(l.time)}</td>
                     <td class="p-2 font-mono font-bold">${escapeHtml(l.po)}</td>
                     <td class="p-2">${escapeHtml(l.status)}</td>
-                    <td class="p-2 text-xs">${escapeHtml(l.remark || '-')}</td>
+                    <td class="p-2 text-xs font-mono font-bold">${escapeHtml(l.remark || '-')}</td>
                 </tr>
             `).join('');
         }
@@ -565,15 +440,107 @@
             updateLogDisplay();
         }
 
+        // ==================== 司機核驗邏輯（受權碼自動+1）====================
+        function verifyAndDispatch(poNumber) {
+            let record = database.find(d => d.poNo === poNumber.toUpperCase());
+            if (!record) {
+                addLogToArray(poNumber, '❌ 查無單據', 'PO不在預約列表中');
+                stats.rejected++;
+                syncToLocalStorage();
+                updateUI();
+                return { success: false, message: '查無此PO單號' };
+            }
+            
+            let isPM = record.hour >= 12;
+            let now = new Date();
+            let currentHour = now.getHours();
+            let currentMinute = now.getMinutes();
+            let isBefore1201 = (currentHour < 12) || (currentHour === 12 && currentMinute === 0);
+            
+            if (isPM && isBefore1201) {
+                addLogToArray(record.poNo, '⏰ 拒絕取籌', '下午單早到 (12:01前)');
+                stats.rejected++;
+                syncToLocalStorage();
+                updateUI();
+                return { success: false, message: '下午預約需於中午12:01後取碼' };
+            }
+            
+            // 產生下一個受權碼
+            let authCode = getNextAuthCode(isPM);
+            addLogToArray(record.poNo, '✅ 核准取籌', authCode);
+            stats.approved++;
+            syncToLocalStorage();
+            updateUI();
+            updateCounterDisplay();
+            
+            return { success: true, authCode: authCode, record: record };
+        }
+
+        // 供司機端調用的接口（透過 localStorage 監聽）
+        function processDriverRequest(poNumber) {
+            return verifyAndDispatch(poNumber);
+        }
+
+        // ==================== 儲存設定 ====================
+        function saveAuthSettings() {
+            let newAM = document.getElementById('auth-start-am').value.toUpperCase();
+            let newPM = document.getElementById('auth-start-pm').value.toUpperCase();
+            
+            // 驗證格式
+            if (!/^[A]\d{3}$/.test(newAM)) {
+                showToast('上午受權碼格式必須為 A + 3位數字 (例如 A001)');
+                return;
+            }
+            if (!/^[P]\d{3}$/.test(newPM)) {
+                showToast('下午受權碼格式必須為 P + 3位數字 (例如 P001)');
+                return;
+            }
+            
+            authStartAM = newAM;
+            authStartPM = newPM;
+            currentWarehouse = document.getElementById('warehouse-select').value;
+            
+            // 重置計數器到起始值
+            let amNum = parseInt(authStartAM.match(/\d+/)[0]);
+            let pmNum = parseInt(authStartPM.match(/\d+/)[0]);
+            amCounter = amNum - 1;
+            pmCounter = pmNum - 1;
+            
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+                authStartAM, authStartPM, currentWarehouse
+            }));
+            syncCounterToStorage();
+            updateCounterDisplay();
+            syncToLocalStorage();
+            showToast('✅ 設定已儲存，計數器已重置');
+            addLogToArray('系統', '受權碼設定', `AM:${authStartAM} PM:${authStartPM}`);
+        }
+
+        function loadAuthSettings() {
+            let stored = localStorage.getItem(SETTINGS_KEY);
+            if (stored) {
+                try {
+                    let settings = JSON.parse(stored);
+                    authStartAM = settings.authStartAM || "A001";
+                    authStartPM = settings.authStartPM || "P001";
+                    currentWarehouse = settings.currentWarehouse || "A";
+                    document.getElementById('auth-start-am').value = authStartAM;
+                    document.getElementById('auth-start-pm').value = authStartPM;
+                    document.getElementById('warehouse-select').value = currentWarehouse;
+                } catch(e) {}
+            }
+        }
+
+        // ==================== localStorage 同步 ====================
         function syncToLocalStorage() {
             try {
                 localStorage.setItem('優品360_database', JSON.stringify(database));
-                localStorage.setItem('優品360_auth', JSON.stringify(authCodes));
-                localStorage.setItem('優品360_warehouse', currentWarehouse);
-                localStorage.setItem('優品360_queue', JSON.stringify(queueList));
                 localStorage.setItem('優品360_logs', JSON.stringify(scanLogs.slice(0, 200)));
                 localStorage.setItem('優品360_stats', JSON.stringify(stats));
                 localStorage.setItem('優品360_last_update', new Date().toISOString());
+                // 同步受權碼計數器
+                syncCounterToStorage();
+                
                 document.getElementById('sync-status').innerHTML = '<i class="fa-regular fa-circle-check"></i> 已同步 ' + new Date().toLocaleTimeString();
                 setTimeout(() => {
                     document.getElementById('sync-status').innerHTML = '<i class="fa-regular fa-circle-check"></i> 已同步';
@@ -585,46 +552,86 @@
             try {
                 let storedDB = localStorage.getItem('優品360_database');
                 if (storedDB) database = JSON.parse(storedDB);
-                let storedAuth = localStorage.getItem('優品360_auth');
-                if (storedAuth) authCodes = JSON.parse(storedAuth);
-                let storedWarehouse = localStorage.getItem('優品360_warehouse');
-                if (storedWarehouse) currentWarehouse = storedWarehouse;
-                let storedQueue = localStorage.getItem('優品360_queue');
-                if (storedQueue) queueList = JSON.parse(storedQueue);
                 let storedLogs = localStorage.getItem('優品360_logs');
                 if (storedLogs) scanLogs = JSON.parse(storedLogs);
                 let storedStats = localStorage.getItem('優品360_stats');
                 if (storedStats) stats = JSON.parse(storedStats);
                 
-                document.getElementById('auth-am-A').value = authCodes.A.am;
-                document.getElementById('auth-pm-A').value = authCodes.A.pm;
-                document.getElementById('auth-am-B').value = authCodes.B.am;
-                document.getElementById('auth-pm-B').value = authCodes.B.pm;
-                document.getElementById('warehouse-select').value = currentWarehouse;
-                
+                loadAuthSettings();
+                loadCounterFromStorage();
                 updateUI();
                 checkAutoReset();
             } catch(e) { console.warn(e); }
         }
 
-        function saveAuthCodes() {
-            authCodes.A.am = document.getElementById('auth-am-A').value.toUpperCase();
-            authCodes.A.pm = document.getElementById('auth-pm-A').value.toUpperCase();
-            authCodes.B.am = document.getElementById('auth-am-B').value.toUpperCase();
-            authCodes.B.pm = document.getElementById('auth-pm-B').value.toUpperCase();
-            currentWarehouse = document.getElementById('warehouse-select').value;
-            syncToLocalStorage();
-            showToast('受權碼已儲存並同步到司機端');
+        // 監聽司機端請求（透過 localStorage 事件）
+        window.addEventListener('storage', (event) => {
+            if (event.key === '優品360_driver_request') {
+                try {
+                    let request = JSON.parse(event.newValue);
+                    if (request && request.poNumber) {
+                        let result = processDriverRequest(request.poNumber);
+                        localStorage.setItem('優品360_driver_response', JSON.stringify(result));
+                    }
+                } catch(e) {}
+            }
+            if (event.key && event.key.startsWith('優品360_')) {
+                loadFromLocalStorage();
+            }
+        });
+
+        // ==================== QR Code 打印 ====================
+        function generateQRCode() {
+            let driverUrl = `https://alexlam50.github.io/360_car_booking/driver.html`;
+            document.getElementById('qrcode').innerHTML = '';
+            new QRCode(document.getElementById('qrcode'), {
+                text: driverUrl,
+                width: 180,
+                height: 180,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+
+        function printQRCode() {
+            let qrContent = document.getElementById('qrcode').innerHTML;
+            let printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>優品360 司機取籌 QR Code</title>
+                    <style>
+                        body { font-family: sans-serif; text-align: center; padding: 40px; }
+                        .container { border: 3px solid #ef4444; padding: 30px; border-radius: 20px; display: inline-block; }
+                        h1 { color: #ef4444; margin-bottom: 5px; }
+                        .qr { margin: 20px auto; }
+                        .footer { margin-top: 20px; font-size: 14px; color: #666; }
+                    </style>
+                </head>
+                <body onload="window.print()">
+                    <div class="container">
+                        <h1>優品360 司機自助取籌</h1>
+                        <p>${currentWarehouse === 'A' ? '倉庫A' : '倉庫B'} · 請掃描QR Code取籌</p>
+                        <div class="qr">${qrContent}</div>
+                        <div class="footer">掃碼後輸入PO單號領取受權碼</div>
+                        <div style="font-size: 10px; margin-top: 15px;">${new Date().toLocaleDateString()}</div>
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
         }
 
         function exportLogs() {
             if (scanLogs.length === 0) { showToast('暫無記錄'); return; }
-            let csv = "時間,PO No,狀態,備註\n" + scanLogs.map(l => `"${l.time}","${l.po}","${l.status}","${l.remark || ''}"`).join("\n");
+            let csv = "時間,PO No,狀態,受權碼\n" + scanLogs.map(l => `"${l.time}","${l.po}","${l.status}","${l.remark || ''}"`).join("\n");
             let blob = new Blob(["\uFEFF" + csv], { type: 'text/csv' });
             let link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = `優品360_日誌_${new Date().toISOString().slice(0,10)}.csv`;
             link.click();
+            showToast('日誌已匯出');
         }
 
         function showToast(msg) {
@@ -666,17 +673,10 @@
             });
         }
 
-        window.addEventListener('storage', (event) => {
-            if (event.key && event.key.startsWith('優品360_')) {
-                loadFromLocalStorage();
-                showToast('📡 資料已自動同步');
-            }
-        });
-
         document.getElementById('search-input')?.addEventListener('input', () => renderTable());
         setupFileUpload();
-        loadFromLocalStorage();
         generateQRCode();
+        loadFromLocalStorage();
         setInterval(() => {
             loadFromLocalStorage();
             checkAutoReset();
