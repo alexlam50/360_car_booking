@@ -9,8 +9,6 @@
     <style>
         .fade-in { animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .pulse { animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { opacity: 0.6; } 100% { opacity: 1; } }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans">
@@ -33,19 +31,19 @@
 
     <div class="max-w-md mx-auto px-4 py-6 space-y-4">
         
-        <!-- 資料狀態卡片（顯示同步狀態） -->
+        <!-- 同步狀態卡片 -->
         <div id="data-status-card" class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-amber-500">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <i id="status-icon" class="fa-solid fa-database text-amber-500"></i>
-                    <span id="data-status-text" class="text-sm font-medium">等待同步資料...</span>
+                    <span id="data-status-text" class="text-sm font-medium">未同步</span>
                 </div>
                 <button onclick="openSyncModal()" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs flex items-center gap-1">
-                    <i class="fa-solid fa-arrows-rotate"></i> 手動同步
+                    <i class="fa-solid fa-keyboard"></i> 輸入同步碼
                 </button>
             </div>
             <div id="data-detail" class="text-xs text-gray-400 mt-2">
-                尚未載入預約資料
+                請輸入管理端提供嘅4位同步碼
             </div>
         </div>
 
@@ -73,18 +71,15 @@
         <!-- 結果顯示區域 -->
         <div id="result-area" class="hidden"></div>
 
-        <!-- 同步教學提示 -->
+        <!-- 提示 -->
         <div class="bg-blue-50 rounded-xl p-3 text-xs text-blue-700 border border-blue-200">
             <div class="flex gap-2">
                 <i class="fa-solid fa-circle-info mt-0.5"></i>
                 <div>
-                    <p class="font-bold">📡 資料同步說明</p>
-                    <p class="mt-1">如果管理端已上傳 CSV，但手機看不到資料：</p>
-                    <ol class="list-decimal list-inside mt-1 space-y-0.5">
-                        <li>點擊上方「手動同步」按鈕</li>
-                        <li>選擇「從管理端連結同步」</li>
-                        <li>輸入管理端顯示的同步碼</li>
-                    </ol>
+                    <p class="font-bold">📡 點樣開始？</p>
+                    <p class="mt-1">1. 向管理員拎4位同步碼</p>
+                    <p class="mt-1">2. 點擊「輸入同步碼」</p>
+                    <p class="mt-1">3. 輸入同步碼後即可查詢PO單號</p>
                 </div>
             </div>
         </div>
@@ -94,48 +89,33 @@
         </div>
     </div>
 
-    <!-- 同步 Modal 彈窗 -->
+    <!-- 同步碼輸入 Modal -->
     <div id="sync-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="font-bold text-lg">📡 手動同步資料</h3>
+                <h3 class="font-bold text-lg">🔑 輸入同步碼</h3>
                 <button onclick="closeSyncModal()" class="text-gray-400 hover:text-gray-600">
                     <i class="fa-solid fa-times text-xl"></i>
                 </button>
             </div>
             
             <div class="space-y-4">
-                <button onclick="syncFromLocalStorage()" class="w-full bg-emerald-600 text-white py-3 rounded-xl flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-database"></i> 從本機瀏覽器同步
-                </button>
-                
-                <button onclick="syncFromQRCode()" class="w-full bg-blue-600 text-white py-3 rounded-xl flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-qrcode"></i> 掃描 QR Code 同步
-                </button>
-                
-                <div class="relative">
-                    <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-gray-300"></div>
-                    </div>
-                    <div class="relative flex justify-center text-xs">
-                        <span class="bg-white px-2 text-gray-500">或者</span>
-                    </div>
-                </div>
-                
                 <div>
-                    <label class="text-xs font-bold text-gray-600">輸入管理端同步碼</label>
-                    <div class="flex gap-2 mt-1">
-                        <input type="text" id="sync-code-input" placeholder="例如: ABC123" class="flex-1 border rounded-lg p-2 text-sm font-mono">
-                        <button onclick="syncFromCode()" class="bg-gray-800 text-white px-4 rounded-lg text-sm">同步</button>
-                    </div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">請輸入管理端提供嘅4位同步碼</label>
+                    <input type="text" id="sync-code-input" placeholder="例如: A3B9" maxlength="4" 
+                           class="w-full border-2 rounded-lg p-4 text-center text-2xl font-mono uppercase tracking-wider focus:border-blue-500 focus:outline-none">
                 </div>
                 
-                <button onclick="resetToDefault()" class="w-full bg-gray-200 text-gray-700 py-2 rounded-lg text-sm">
-                    重置為預設資料
+                <button onclick="syncWithCode()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-lg flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-arrows-rotate"></i> 確認同步
                 </button>
+                
+                <p class="text-xs text-gray-400 text-center">
+                    同步碼有效期為5分鐘，請向管理員索取
+                </p>
             </div>
             
-            <div id="sync-status-msg" class="mt-4 text-xs text-center text-gray-500"></div>
+            <div id="sync-error-msg" class="mt-4 text-xs text-center text-red-500 hidden"></div>
         </div>
     </div>
 
@@ -145,8 +125,11 @@
     <script>
         // ==================== 全域變數 ====================
         let database = [];
-        let authAM = "A123", authPM = "P456";
-        let lastSyncTime = null;
+        let authStartAM = "A001";
+        let authStartPM = "P001";
+        let amCounter = 0;
+        let pmCounter = 0;
+        let isSynced = false;
 
         // ==================== 時間顯示 ====================
         function updateTime() {
@@ -156,172 +139,71 @@
         setInterval(updateTime, 1000);
         updateTime();
 
-        // ==================== 同步方式 1：從 localStorage 讀取 ====================
-        function syncFromLocalStorage() {
+        // ==================== 同步碼驗證（4位）====================
+        function syncWithCode() {
+            let code = document.getElementById('sync-code-input').value.trim().toUpperCase();
+            let errorDiv = document.getElementById('sync-error-msg');
+            
+            if (code.length !== 4) {
+                errorDiv.innerText = '請輸入4位同步碼';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
+            errorDiv.classList.add('hidden');
+            showToast('正在同步資料...');
+            
+            // 從 localStorage 讀取同步碼對應的資料
+            let syncData = localStorage.getItem(`優品360_sync_${code}`);
+            
+            if (!syncData) {
+                errorDiv.innerText = '同步碼無效或已過期，請向管理員重新索取';
+                errorDiv.classList.remove('hidden');
+                showToast('❌ 同步碼無效或已過期');
+                return;
+            }
+            
             try {
-                let storedDB = localStorage.getItem('優品360_database');
-                let storedAuth = localStorage.getItem('優品360_auth');
-                let storedWarehouse = localStorage.getItem('優品360_warehouse');
+                let data = JSON.parse(syncData);
                 
-                if (storedDB) {
-                    database = JSON.parse(storedDB);
-                    document.getElementById('data-status-text').innerHTML = '✅ 資料已載入';
-                    document.getElementById('status-icon').className = 'fa-solid fa-database text-emerald-500';
-                    document.getElementById('data-detail').innerHTML = `已載入 ${database.length} 筆預約資料 | 最後同步: ${new Date().toLocaleTimeString()}`;
-                    document.getElementById('data-status-card').className = 'bg-white rounded-xl p-4 shadow-sm border-l-4 border-emerald-500';
-                    
-                    if (storedAuth) {
-                        let auth = JSON.parse(storedAuth);
-                        let warehouse = storedWarehouse || 'A';
-                        if (auth[warehouse]) {
-                            authAM = auth[warehouse].am;
-                            authPM = auth[warehouse].pm;
-                        } else if (auth.am && auth.pm) {
-                            authAM = auth.am;
-                            authPM = auth.pm;
-                        }
-                    }
-                    
-                    updateTestButtons();
-                    showToast(`✅ 同步成功！已載入 ${database.length} 筆預約資料`);
-                    closeSyncModal();
-                    return true;
-                } else {
-                    showToast('⚠️ 本機沒有儲存資料，請嘗試其他同步方式');
-                    document.getElementById('sync-status-msg').innerHTML = '⚠️ 本機沒有儲存資料';
-                    return false;
+                if (data.database) {
+                    database = data.database;
                 }
-            } catch(e) {
-                console.warn(e);
-                showToast('同步失敗：' + e.message);
-                return false;
-            }
-        }
-
-        // ==================== 同步方式 2：從管理端連結讀取（透過 URL 參數）====================
-        function syncFromURL() {
-            let urlParams = new URLSearchParams(window.location.search);
-            let dataParam = urlParams.get('data');
-            
-            if (dataParam) {
-                try {
-                    let decoded = decodeURIComponent(dataParam);
-                    let parsed = JSON.parse(decoded);
-                    if (parsed.database) {
-                        database = parsed.database;
-                        if (parsed.authAM) authAM = parsed.authAM;
-                        if (parsed.authPM) authPM = parsed.authPM;
-                        updateTestButtons();
-                        showToast(`✅ 從連結同步成功！共 ${database.length} 筆資料`);
-                        updateDataStatus();
-                        return true;
-                    }
-                } catch(e) { console.warn(e); }
-            }
-            return false;
-        }
-
-        // ==================== 同步方式 3：掃描 QR Code ====================
-        function syncFromQRCode() {
-            // 提示用戶掃描管理端顯示的 QR Code
-            showToast('請掃描管理端顯示的同步 QR Code');
-            
-            // 建立一個隱藏的 input 來接收掃描結果（實際使用時可搭配手機相機）
-            let fakeScan = prompt('請輸入管理端顯示的同步碼或貼上連結：');
-            if (fakeScan) {
-                if (fakeScan.startsWith('http')) {
-                    // 從連結提取資料
-                    let url = new URL(fakeScan);
-                    let dataParam = url.searchParams.get('data');
-                    if (dataParam) {
-                        try {
-                            let parsed = JSON.parse(decodeURIComponent(dataParam));
-                            if (parsed.database) {
-                                database = parsed.database;
-                                updateTestButtons();
-                                showToast(`✅ 同步成功！共 ${database.length} 筆資料`);
-                                updateDataStatus();
-                                closeSyncModal();
-                                return;
-                            }
-                        } catch(e) {}
-                    }
-                } else {
-                    // 當作同步碼處理
-                    syncWithCode(fakeScan);
+                if (data.authStartAM) {
+                    authStartAM = data.authStartAM;
                 }
-            }
-        }
-
-        // ==================== 同步方式 4：使用同步碼 ====================
-        function syncFromCode() {
-            let code = document.getElementById('sync-code-input').value.trim();
-            if (!code) {
-                showToast('請輸入同步碼');
-                return;
-            }
-            syncWithCode(code);
-        }
-
-        function syncWithCode(code) {
-            // 嘗試從 localStorage 讀取特定 key
-            let storedData = localStorage.getItem(`優品360_sync_${code}`);
-            if (storedData) {
-                try {
-                    let data = JSON.parse(storedData);
-                    if (data.database) database = data.database;
-                    if (data.authAM) authAM = data.authAM;
-                    if (data.authPM) authPM = data.authPM;
-                    updateTestButtons();
-                    updateDataStatus();
-                    showToast(`✅ 同步碼驗證成功！共 ${database.length} 筆資料`);
-                    closeSyncModal();
-                    return;
-                } catch(e) {}
-            }
-            
-            // 如果找不到，嘗試用預設同步碼
-            if (code === 'DEMO123' || code === 'SYNC360') {
-                loadDemoData();
-                showToast('✅ 已載入示範資料');
-                closeSyncModal();
-                return;
-            }
-            
-            showToast('❌ 同步碼無效，請確認後再試');
-        }
-
-        // ==================== 更新資料狀態顯示 ====================
-        function updateDataStatus() {
-            if (database.length > 0) {
-                document.getElementById('data-status-text').innerHTML = '✅ 資料已載入';
+                if (data.authStartPM) {
+                    authStartPM = data.authStartPM;
+                }
+                if (data.amCounter !== undefined) {
+                    amCounter = data.amCounter;
+                }
+                if (data.pmCounter !== undefined) {
+                    pmCounter = data.pmCounter;
+                }
+                
+                isSynced = true;
+                
+                // 更新 UI 顯示
+                document.getElementById('data-status-text').innerHTML = '✅ 已同步';
                 document.getElementById('status-icon').className = 'fa-solid fa-database text-emerald-500';
-                document.getElementById('data-detail').innerHTML = `已載入 ${database.length} 筆預約資料 | 最後同步: ${new Date().toLocaleTimeString()}`;
+                document.getElementById('data-detail').innerHTML = `已載入 ${database.length} 筆預約資料 | 受權碼: ${authStartAM} / ${authStartPM}`;
                 document.getElementById('data-status-card').className = 'bg-white rounded-xl p-4 shadow-sm border-l-4 border-emerald-500';
-            } else {
-                document.getElementById('data-status-text').innerHTML = '⚠️ 等待同步資料';
-                document.getElementById('status-icon').className = 'fa-solid fa-database text-amber-500';
-                document.getElementById('data-detail').innerHTML = '尚未載入預約資料，請點擊「手動同步」';
-                document.getElementById('data-status-card').className = 'bg-white rounded-xl p-4 shadow-sm border-l-4 border-amber-500';
+                
+                // 更新測試按鈕
+                updateTestButtons();
+                
+                closeSyncModal();
+                showToast(`✅ 同步成功！已載入 ${database.length} 筆預約資料`);
+                
+                // 可選：同步完成後自動刪除這個同步碼（一次性使用）
+                // localStorage.removeItem(`優品360_sync_${code}`);
+                
+            } catch(e) {
+                errorDiv.innerText = '資料讀取錯誤，請重新嘗試';
+                errorDiv.classList.remove('hidden');
+                console.error(e);
             }
-        }
-
-        // ==================== 載入示範資料 ====================
-        function loadDemoData() {
-            database = [
-                { poNo: "EPO260002047", supplier: "鮮美供應有限公司", timeVal: "10", pallets: "4", hour: 10 },
-                { poNo: "EPO260002046", supplier: "和興食品", timeVal: "1430", pallets: "1", hour: 14 },
-                { poNo: "PO260005760", supplier: "恆華貿易", timeVal: "14", pallets: "4", hour: 14 },
-                { poNo: "PO260005567", supplier: "大昌行物流", timeVal: "11", pallets: "1", hour: 11 }
-            ];
-            updateTestButtons();
-            updateDataStatus();
-            showToast(`已載入 ${database.length} 筆示範資料`);
-        }
-
-        function resetToDefault() {
-            loadDemoData();
-            closeSyncModal();
         }
 
         // ==================== 更新測試按鈕 ====================
@@ -360,6 +242,19 @@
             return String(raw);
         }
 
+        // ==================== 獲取下一個受權碼 ====================
+        function getNextAuthCode(isPM) {
+            if (isPM) {
+                pmCounter++;
+                let number = pmCounter.toString().padStart(3, '0');
+                return `P${number}`;
+            } else {
+                amCounter++;
+                let number = amCounter.toString().padStart(3, '0');
+                return `A${number}`;
+            }
+        }
+
         // ==================== 提交核驗 ====================
         function submitQuery() {
             let po = document.getElementById('driver-po').value.trim().toUpperCase();
@@ -368,8 +263,8 @@
                 return;
             }
 
-            if (database.length === 0) {
-                showToast('⚠️ 尚未同步資料，請先點擊「手動同步」');
+            if (!isSynced || database.length === 0) {
+                showToast('⚠️ 尚未同步資料，請先輸入同步碼');
                 openSyncModal();
                 return;
             }
@@ -382,6 +277,7 @@
             let isBefore1201 = (currentHour < 12) || (currentHour === 12 && currentMinute === 0);
             let timeStr = now.toLocaleTimeString('zh-HK');
 
+            // 記錄日誌到 localStorage（供管理端查看）
             function addLog(status, remark) {
                 let logs = JSON.parse(localStorage.getItem('優品360_logs') || '[]');
                 logs.unshift({ time: timeStr, po: po, status: status, remark: remark });
@@ -410,7 +306,10 @@
             }
 
             let isPM = record.hour >= 12;
-            let authCode = isPM ? authPM : authAM;
+            let authCode = getNextAuthCode(isPM);
+            
+            // 更新計數器到 localStorage（讓管理端知道）
+            localStorage.setItem('優品360_auth_counter', JSON.stringify({ am: amCounter, pm: pmCounter }));
 
             if (isPM && isBefore1201) {
                 resultDiv.innerHTML = `
@@ -446,7 +345,7 @@
                 </div>
             `;
             resultDiv.classList.remove('hidden');
-            addLog('✅ 核准取籌', `派發受權碼 ${authCode}`);
+            addLog('✅ 核准取籌', authCode);
             showToast(`取籌成功！受權碼：${authCode}`);
         }
 
@@ -461,7 +360,8 @@
         function openSyncModal() {
             document.getElementById('sync-modal').classList.remove('hidden');
             document.getElementById('sync-code-input').value = '';
-            document.getElementById('sync-status-msg').innerHTML = '';
+            document.getElementById('sync-error-msg').classList.add('hidden');
+            document.getElementById('sync-code-input').focus();
         }
 
         function closeSyncModal() {
@@ -476,45 +376,37 @@
             setTimeout(() => toast.classList.add('hidden'), 2500);
         }
 
-        // ==================== 自動嘗試從 localStorage 同步 ====================
-        function autoSync() {
+        // ==================== 檢查是否已有資料 ====================
+        function checkExistingData() {
+            // 檢查 localStorage 有冇已經同步過嘅資料
             let storedDB = localStorage.getItem('優品360_database');
-            if (storedDB) {
+            if (storedDB && !isSynced) {
                 try {
-                    let newDB = JSON.parse(storedDB);
-                    if (JSON.stringify(database) !== JSON.stringify(newDB)) {
-                        database = newDB;
+                    database = JSON.parse(storedDB);
+                    if (database.length > 0) {
+                        isSynced = true;
+                        document.getElementById('data-status-text').innerHTML = '✅ 已同步';
+                        document.getElementById('status-icon').className = 'fa-solid fa-database text-emerald-500';
+                        document.getElementById('data-detail').innerHTML = `已載入 ${database.length} 筆預約資料`;
+                        document.getElementById('data-status-card').className = 'bg-white rounded-xl p-4 shadow-sm border-l-4 border-emerald-500';
                         updateTestButtons();
-                        updateDataStatus();
-                        showToast('📡 偵測到新資料，已自動同步');
                     }
                 } catch(e) {}
             }
         }
 
-        // ==================== 監聽 storage 事件 ====================
-        window.addEventListener('storage', (event) => {
-            if (event.key === '優品360_database') {
-                autoSync();
-            }
-        });
-
         // ==================== 初始化 ====================
         function init() {
-            // 嘗試從 localStorage 同步
-            autoSync();
-            
-            // 嘗試從 URL 參數同步
-            syncFromURL();
-            
-            // 如果仍然沒有資料，顯示提示
-            if (database.length === 0) {
-                updateDataStatus();
-            }
+            checkExistingData();
             
             // 監聽 Enter 鍵
             document.getElementById('driver-po').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') submitQuery();
+            });
+            
+            // 同步碼輸入框 Enter 鍵
+            document.getElementById('sync-code-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') syncWithCode();
             });
             
             // 點擊 modal 背景關閉
@@ -523,6 +415,13 @@
                     closeSyncModal();
                 }
             });
+            
+            // 如果沒有同步，自動彈出 modal
+            if (!isSynced && database.length === 0) {
+                setTimeout(() => {
+                    openSyncModal();
+                }, 500);
+            }
         }
 
         init();
