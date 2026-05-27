@@ -280,7 +280,9 @@
                 timestamp: new Date().toISOString()
             };
             
-            let syncCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+            // 👇 改為 4 位隨機碼
+            let syncCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+            
             localStorage.setItem(`優品360_sync_${syncCode}`, JSON.stringify(syncData));
             
             setTimeout(() => {
