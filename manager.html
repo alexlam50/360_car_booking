@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>優品360 收貨管理工作平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans">
+
+    <div class="bg-gradient-to-r from-red-700 to-red-500 text-white py-4 px-6 shadow-lg">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-truck-ramp-box text-2xl"></i>
+                <div>
+                    <h1 class="text-xl font-bold">優品360 收貨管理工作平台</h1>
+                    <p class="text-xs text-red-100">管理端 · 上傳 CSV / 設定受權碼</p>
+                </div>
+            </div>
+            <div class="text-right text-xs">
+                <div id="sync-status" class="bg-white/20 px-3 py-1 rounded-full">
+                    <i class="fa-regular fa-circle-check"></i> 已同步到司機端
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-6 py-8 space-y-6">
+        <!-- 統計卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-xl shadow border-l-4 border-blue-500">
+                <div class="text-sm text-slate-500">📋 PO 總數</div>
+                <div class="text-3xl font-bold" id="stat-total">0</div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow border-l-4 border-amber-500">
+                <div class="text-sm text-slate-500">🌙 下午預約</div>
+                <div class="text-3xl font-bold" id="stat-pm">0</div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow border-l-4 border-emerald-500">
+                <div class="text-sm text-slate-500">✅ 已派發受權碼</div>
+                <div class="text-3xl font-bold text-emerald-600" id="stat-approved">0</div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow border-l-4 border-red-500">
+                <div class="text-sm text-slate-500">❌ 拒絕次數</div>
+                <div class="text-3xl font-bold text-red-600" id="stat-rejected">0</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 左欄 -->
+            <div class="space-y-6">
+                <div class="bg-white rounded-xl shadow p-6">
+                    <h2 class="font-bold text-red-600 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-cloud-arrow-up"></i> 上載收貨資料</h2>
+                    <div id="drop-zone" class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center cursor-pointer hover:border-red-500 hover:bg-red-50 transition">
+                        <i class="fa-solid fa-file-excel text-4xl text-green-600 mb-3"></i>
+                        <p class="text-sm font-medium">點擊或拖曳 Excel/CSV 到這裡</p>
+                        <p class="text-xs text-gray-400 mt-1">支援 .xlsx, .xls, .csv</p>
+                        <input type="file" id="file-input" accept=".csv,.xlsx,.xls" class="hidden">
+                    </div>
+                    <div id="file-status" class="hidden mt-3 text-sm text-emerald-700 bg-emerald-50 p-3 rounded-lg flex items-center gap-2">
+                        <i class="fa-solid fa-circle-check"></i> <span id="file-name"></span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow p-6">
+                    <h2 class="font-bold text-red-600 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-key"></i> 排隊機受權碼設定</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-600 block mb-1">上午時段 (09:00-11:59)</label>
+                            <input type="text" id="auth-am" value="A123" maxlength="4" class="w-full border rounded-lg p-3 text-lg font-mono uppercase text-center">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-600 block mb-1">下午時段 (12:00-18:00)</label>
+                            <input type="text" id="auth-pm" value="P456" maxlength="4" class="w-full border rounded-lg p-3 text-lg font-mono uppercase text-center">
+                        </div>
+                    </div>
+                    <button onclick="saveAuthCodes()" class="w-full mt-4 bg-slate-800 text-white py-3 rounded-lg text-sm font-bold hover:bg-slate-900 transition">
+                        💾 儲存並同步到司機端
+                    </button>
+                </div>
+            </div>
+
+            <!-- 右欄 -->
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white rounded-xl shadow p-6">
+                    <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-table-list text-red-600"></i> 預約總覽表</h2>
+                    <input type="text" id="search-input" placeholder="🔍 搜尋 PO 單號或供應商..." class="w-full border rounded-lg p-3 text-sm mb-4">
+                    <div class="overflow-x-auto max-h-96 overflow-y-auto border rounded-lg">
+                        <table class="w-full text-sm">
+                            <thead class="bg-slate-100 sticky top-0">
+                                <tr class="border-b">
+                                    <th class="p-3 text-left font-bold text-slate-700">PO No</th>
+                                    <th class="p-3 text-left font-bold text-slate-700">供應商簡稱</th>
+                                    <th class="p-3 text-left font-bold text-slate-700">預約時間</th>
+                                    <th class="p-3 text-left font-bold text-slate-700">貨板數</th>
+                                 </tr>
+                            </thead>
+                            <tbody id="po-table" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow p-6">
+                    <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-clock-rotate-left"></i> 核驗日誌</h2>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs text-gray-500">司機取籌記錄即時顯示</span>
+                        <button onclick="exportLogs()" class="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-slate-700">
+                            <i class="fa-solid fa-download"></i> 匯出 CSV
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto max-h-64 overflow-y-auto border rounded-lg">
+                        <table class="w-full text-xs">
+                            <thead class="bg-slate-100 sticky top-0">
+                                <tr class="border-b">
+                                    <th class="p-2 text-left">時間</th>
+                                    <th class="p-2 text-left">PO No</th>
+                                    <th class="p-2 text-left">狀態</th>
+                                    <th class="p-2 text-left">受權碼/備註</th>
+                                 </tr>
+                            </thead>
+                            <tbody id="log-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg hidden z-50"></div>
+
+    <script>
+        // 全域變數
+        let database = [];
+        let authAM = "A123", authPM = "P456";
+        let scanLogs = [];
+        let stats = { approved: 0, rejected: 0 };
+
+        // 偵測欄位
+        function detectColumns(headers) {
+            const patterns = {
+                poNo: [/^po\s*no$/i, /^採購單號$/i, /^單號$/i, /^po$/i, /^訂單編號$/i],
+                supplier: [/^供應商/i, /^supplier/i, /^廠商/i, /^vendor/i, /^供應商簡稱/i],
+                time: [/^時間$/i, /^預約時間$/i, /^time$/i, /^時段$/i, /^送貨時間$/i],
+                pallets: [/^貨板/i, /^板數$/i, /^pallets?$/i, /^數量$/i, /^托盤/i]
+            };
+            let colMap = { poNo: -1, supplier: -1, time: -1, pallets: -1 };
+            for (let i = 0; i < headers.length; i++) {
+                let h = headers[i].trim();
+                for (let [key, regexList] of Object.entries(patterns)) {
+                    if (colMap[key] === -1 && regexList.some(re => re.test(h))) {
+                        colMap[key] = i;
+                    }
+                }
+            }
+            if (colMap.poNo === -1 && headers.length > 0) colMap.poNo = 0;
+            return colMap;
+        }
+
+        function parseTimeToHour(timeStr) {
+            if (!timeStr) return NaN;
+            let str = String(timeStr).trim();
+            let isPM = str.includes('下午') || str.includes('PM');
+            let numMatch = str.match(/\d+/g);
+            if (!numMatch) return NaN;
+            let hour = parseInt(numMatch[0]);
+            if (isPM && hour < 12) hour += 12;
+            if (numMatch[0] && numMatch[0].length === 4) hour = parseInt(numMatch[0].substring(0, 2));
+            return hour;
+        }
+
+        function formatDisplayTime(raw) {
+            if (!raw) return '-';
+            let hour = parseTimeToHour(raw);
+            if (!isNaN(hour)) return hour + ':00';
+            return String(raw);
+        }
+
+        function parseCSVLine(line) {
+            let result = [], cell = '', inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                let ch = line[i];
+                if (ch === '"') {
+                    inQuotes = !inQuotes;
+                } else if (ch === ',' && !inQuotes) {
+                    result.push(cell.trim());
+                    cell = '';
+                } else {
+                    cell += ch;
+                }
+            }
+            result.push(cell.trim());
+            return result;
+        }
+
+        function parseUploadedData(data, fileName) {
+            let lines = data.split(/\r?\n/);
+            if (lines.length < 2) return false;
+            let headers = parseCSVLine(lines[0]);
+            let colMap = detectColumns(headers);
+            
+            console.log('欄位對應:', colMap);
+            console.log('標題列:', headers);
+            
+            let newDatabase = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                let row = parseCSVLine(lines[i]);
+                if (row.length === 0) continue;
+                let poNo = colMap.poNo >= 0 ? (row[colMap.poNo] || '').toString().trim() : '';
+                if (!poNo || poNo === '' || poNo === 'PO No' || poNo === '採購單號') continue;
+                
+                newDatabase.push({
+                    poNo: poNo.toUpperCase(),
+                    supplier: colMap.supplier >= 0 ? (row[colMap.supplier] || '').toString().trim() : '不明供應商',
+                    timeVal: colMap.time >= 0 ? (row[colMap.time] || '').toString().trim() : '',
+                    pallets: colMap.pallets >= 0 ? (row[colMap.pallets] || '').toString().trim() : '0',
+                    hour: parseTimeToHour(colMap.time >= 0 ? row[colMap.time] : '')
+                });
+            }
+            if (newDatabase.length === 0) { showToast('找不到有效的 PO 單號'); return false; }
+            database = newDatabase;
+            updateUI();
+            syncToLocalStorage();
+            showToast(`成功載入 ${database.length} 筆預約資料`);
+            let statusDiv = document.getElementById('file-status');
+            statusDiv.classList.remove('hidden');
+            document.getElementById('file-name').innerText = `${fileName} (${database.length}筆)`;
+            return true;
+        }
+
+        async function handleFile(file) {
+            let text = await file.text();
+            parseUploadedData(text, file.name);
+        }
+
+        function handleExcel(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const csv = XLSX.utils.sheet_to_csv(sheet);
+                parseUploadedData(csv, file.name);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function updateUI() {
+            document.getElementById('stat-total').innerText = database.length;
+            let pmCount = database.filter(d => d.hour >= 12 && !isNaN(d.hour)).length;
+            document.getElementById('stat-pm').innerText = pmCount;
+            renderTable();
+            updateLogDisplay();
+            document.getElementById('stat-approved').innerText = stats.approved;
+            document.getElementById('stat-rejected').innerText = stats.rejected;
+        }
+
+        // 修正版：正確顯示表格，每個欄位獨立一格
+        function renderTable() {
+            let tbody = document.getElementById('po-table');
+            let searchTerm = document.getElementById('search-input')?.value.toLowerCase() || '';
+            let filtered = database.filter(d => 
+                d.poNo.toLowerCase().includes(searchTerm) || 
+                d.supplier.toLowerCase().includes(searchTerm)
+            );
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400">📭 尚無資料，請上傳 CSV 檔案</td></tr>';
+                return;
+            }
+            
+            // 重點：每個欄位獨立一個 <td>
+            tbody.innerHTML = filtered.map(d => `
+                <tr class="border-b hover:bg-slate-50">
+                    <td class="p-3 font-mono font-bold text-slate-800">${escapeHtml(d.poNo)}</td>
+                    <td class="p-3">${escapeHtml(d.supplier)}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-1 rounded-full text-xs ${d.hour >= 12 && !isNaN(d.hour) ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'}">
+                            ${formatDisplayTime(d.timeVal)}
+                        </span>
+                    </td>
+                    <td class="p-3 text-center">${escapeHtml(d.pallets)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // 防止 XSS 攻擊
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        function updateLogDisplay() {
+            let tbody = document.getElementById('log-table');
+            if (scanLogs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400">📭 暫無核驗記錄</td></tr>';
+                return;
+            }
+            tbody.innerHTML = scanLogs.slice(0, 50).map(l => `
+                <tr class="border-b hover:bg-slate-50">
+                    <td class="p-2 text-gray-500">${escapeHtml(l.time)}</td>
+                    <td class="p-2 font-mono font-bold">${escapeHtml(l.po)}</td>
+                    <td class="p-2">${escapeHtml(l.status)}</td>
+                    <td class="p-2 text-xs">${escapeHtml(l.remark || '-')}</td>
+                </tr>
+            `).join('');
+        }
+
+        // localStorage 同步
+        function syncToLocalStorage() {
+            try {
+                localStorage.setItem('優品360_database', JSON.stringify(database));
+                localStorage.setItem('優品360_auth', JSON.stringify({ am: authAM, pm: authPM }));
+                localStorage.setItem('優品360_logs', JSON.stringify(scanLogs.slice(0, 100)));
+                localStorage.setItem('優品360_stats', JSON.stringify(stats));
+                localStorage.setItem('優品360_last_update', new Date().toISOString());
+                document.getElementById('sync-status').innerHTML = '<i class="fa-regular fa-circle-check"></i> 已同步到司機端 ' + new Date().toLocaleTimeString();
+                setTimeout(() => {
+                    document.getElementById('sync-status').innerHTML = '<i class="fa-regular fa-circle-check"></i> 已同步到司機端';
+                }, 2000);
+            } catch(e) { console.warn(e); }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                let storedDB = localStorage.getItem('優品360_database');
+                if (storedDB) database = JSON.parse(storedDB);
+                let storedAuth = localStorage.getItem('優品360_auth');
+                if (storedAuth) { let a = JSON.parse(storedAuth); authAM = a.am; authPM = a.pm; }
+                let storedLogs = localStorage.getItem('優品360_logs');
+                if (storedLogs) scanLogs = JSON.parse(storedLogs);
+                let storedStats = localStorage.getItem('優品360_stats');
+                if (storedStats) stats = JSON.parse(storedStats);
+                document.getElementById('auth-am').value = authAM;
+                document.getElementById('auth-pm').value = authPM;
+                updateUI();
+            } catch(e) { console.warn(e); }
+        }
+
+        // 監聽司機端更新
+        window.addEventListener('storage', (event) => {
+            if (event.key && event.key.startsWith('優品360_')) {
+                console.log('偵測到司機端更新:', event.key);
+                loadFromLocalStorage();
+                showToast('📡 司機端有新記錄，已自動同步');
+            }
+        });
+
+        function saveAuthCodes() {
+            authAM = document.getElementById('auth-am').value.toUpperCase();
+            authPM = document.getElementById('auth-pm').value.toUpperCase();
+            syncToLocalStorage();
+            showToast('受權碼已儲存並同步到司機端');
+        }
+
+        function exportLogs() {
+            if (scanLogs.length === 0) { showToast('暫無記錄'); return; }
+            let csv = "時間,PO No,狀態,備註\n" + scanLogs.map(l => `"${l.time}","${l.po}","${l.status}","${l.remark || ''}"`).join("\n");
+            let blob = new Blob(["\uFEFF" + csv], { type: 'text/csv' });
+            let link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `優品360_日誌_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+            showToast('日誌已匯出');
+        }
+
+        function showToast(msg) {
+            let toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 2500);
+        }
+
+        function setupFileUpload() {
+            let dropZone = document.getElementById('drop-zone');
+            let fileInput = document.getElementById('file-input');
+            dropZone.addEventListener('click', () => fileInput.click());
+            dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('border-red-500', 'bg-red-50'); });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-red-500', 'bg-red-50'));
+            dropZone.addEventListener('drop', e => {
+                e.preventDefault();
+                dropZone.classList.remove('border-red-500', 'bg-red-50');
+                let file = e.dataTransfer.files[0];
+                if (file.name.match(/\.(xlsx|xls)$/i)) handleExcel(file);
+                else handleFile(file);
+            });
+            fileInput.addEventListener('change', e => {
+                if (e.target.files[0]) {
+                    let file = e.target.files[0];
+                    if (file.name.match(/\.(xlsx|xls)$/i)) handleExcel(file);
+                    else handleFile(file);
+                }
+            });
+        }
+
+        document.getElementById('search-input')?.addEventListener('input', () => renderTable());
+        setupFileUpload();
+        loadFromLocalStorage();
+        setInterval(() => loadFromLocalStorage(), 5000);
+    </script>
+</body>
+</html>

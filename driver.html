@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>優品360 司機自助取籌平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+    <div class="bg-gradient-to-r from-red-600 to-red-500 text-white py-5 px-4 shadow-lg">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-truck-fast text-2xl"></i>
+                <div>
+                    <h1 class="text-xl font-bold">優品360 司機自助取籌</h1>
+                    <p class="text-xs text-red-100">請輸入 PO 單號領取受權碼</p>
+                </div>
+            </div>
+            <div class="text-right text-xs bg-white/20 px-3 py-1.5 rounded-full">
+                <i class="fa-regular fa-clock"></i> <span id="live-time">--:--:--</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-md mx-auto px-4 py-6 space-y-4">
+        <!-- 資料狀態提示 -->
+        <div id="data-status" class="bg-white rounded-xl p-3 text-center text-sm shadow-sm border-l-4 border-emerald-500">
+            <i class="fa-solid fa-database text-emerald-500 mr-2"></i>
+            <span id="data-count">等待管理端上傳資料...</span>
+        </div>
+
+        <!-- 取籌卡片 -->
+        <div class="bg-white rounded-2xl shadow-xl p-6">
+            <div class="text-center mb-5">
+                <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fa-solid fa-clipboard-list text-red-600 text-3xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-gray-800">輸入 PO 單號</h2>
+                <p class="text-xs text-gray-500 mt-1">系統會核對預約時段並發放受權碼</p>
+            </div>
+
+            <input type="text" id="driver-po" placeholder="例如: EPO260002047" class="w-full border-2 border-gray-200 rounded-xl p-4 text-center text-lg font-mono uppercase focus:border-red-500 focus:outline-none transition">
+
+            <button onclick="submitQuery()" class="w-full mt-5 bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-bold text-lg transition active:scale-95 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-key"></i> 核驗並領取受權碼
+            </button>
+
+            <!-- 快速測試按鈕會自動從管理端同步顯示 -->
+            <div id="test-buttons" class="flex flex-wrap gap-2 justify-center mt-5"></div>
+        </div>
+
+        <!-- 結果顯示區域 -->
+        <div id="result-area" class="hidden"></div>
+
+        <!-- 提示 -->
+        <div class="text-center text-xs text-gray-400 py-3 border-t">
+            <i class="fa-regular fa-clock mr-1"></i> 上午預約任何時間可取碼 · 下午預約需 12:01 後
+            <div class="mt-1 text-[10px]">📡 資料與管理端即時同步</div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-full shadow-lg hidden z-50 text-sm whitespace-nowrap"></div>
+
+    <script>
+        // 全域變數
+        let database = [];
+        let authAM = "A123", authPM = "P456";
+
+        // 時間顯示
+        function updateTime() {
+            let now = new Date();
+            document.getElementById('live-time').innerText = now.toLocaleTimeString('zh-HK');
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // 從 localStorage 讀取管理端資料
+        function syncFromManager() {
+            try {
+                let storedDB = localStorage.getItem('優品360_database');
+                if (storedDB) {
+                    database = JSON.parse(storedDB);
+                    let count = database.length;
+                    document.getElementById('data-count').innerHTML = `📋 已同步 ${count} 筆預約資料`;
+                    document.getElementById('data-status').className = "bg-white rounded-xl p-3 text-center text-sm shadow-sm border-l-4 border-emerald-500";
+                    updateTestButtons();
+                } else {
+                    document.getElementById('data-count').innerHTML = '⏳ 等待管理端上傳 CSV 檔案...';
+                    document.getElementById('data-status').className = "bg-white rounded-xl p-3 text-center text-sm shadow-sm border-l-4 border-amber-500";
+                }
+                
+                let storedAuth = localStorage.getItem('優品360_auth');
+                if (storedAuth) {
+                    let auth = JSON.parse(storedAuth);
+                    authAM = auth.am;
+                    authPM = auth.pm;
+                }
+            } catch(e) { console.warn(e); }
+        }
+
+        // 更新測試按鈕（顯示資料庫中的 PO）
+        function updateTestButtons() {
+            let container = document.getElementById('test-buttons');
+            if (database.length > 0) {
+                let testPOs = database.slice(0, 4).map(d => d.poNo);
+                container.innerHTML = testPOs.map(po => `
+                    <span onclick="document.getElementById('driver-po').value='${po}';submitQuery()" 
+                          class="bg-gray-100 hover:bg-red-100 hover:text-red-600 px-3 py-1.5 rounded-full text-xs font-mono cursor-pointer transition">
+                        ${po}
+                    </span>
+                `).join('');
+            } else {
+                container.innerHTML = '<span class="text-xs text-gray-400">上傳 CSV 後會顯示測試單號</span>';
+            }
+        }
+
+        // 解析時間
+        function parseTimeToHour(timeStr) {
+            if (!timeStr) return NaN;
+            let str = String(timeStr).trim();
+            let isPM = str.includes('下午') || str.includes('PM');
+            let numMatch = str.match(/\d+/g);
+            if (!numMatch) return NaN;
+            let hour = parseInt(numMatch[0]);
+            if (isPM && hour < 12) hour += 12;
+            if (numMatch[0] && numMatch[0].length === 4) hour = parseInt(numMatch[0].substring(0, 2));
+            return hour;
+        }
+
+        function formatDisplayTime(raw) {
+            if (!raw) return '-';
+            let hour = parseTimeToHour(raw);
+            if (!isNaN(hour)) return hour + ':00';
+            return String(raw);
+        }
+
+        // 提交核驗
+        function submitQuery() {
+            let po = document.getElementById('driver-po').value.trim().toUpperCase();
+            if (!po) {
+                showToast('請輸入 PO 單號');
+                return;
+            }
+
+            // 先同步最新資料
+            syncFromManager();
+
+            let record = database.find(d => d.poNo === po);
+            let resultDiv = document.getElementById('result-area');
+            let now = new Date();
+            let currentHour = now.getHours();
+            let currentMinute = now.getMinutes();
+            let isBefore1201 = (currentHour < 12) || (currentHour === 12 && currentMinute === 0);
+            let timeStr = now.toLocaleTimeString('zh-HK');
+
+            // 記錄日誌用的函數
+            function addLog(status, remark) {
+                let logs = JSON.parse(localStorage.getItem('優品360_logs') || '[]');
+                logs.unshift({ time: timeStr, po: po, status: status, remark: remark });
+                if (logs.length > 100) logs.pop();
+                localStorage.setItem('優品360_logs', JSON.stringify(logs));
+                
+                let stats = JSON.parse(localStorage.getItem('優品360_stats') || '{"approved":0,"rejected":0}');
+                if (status.includes('核准')) stats.approved++;
+                else if (status.includes('拒絕') || status.includes('查無')) stats.rejected++;
+                localStorage.setItem('優品360_stats', JSON.stringify(stats));
+                
+                // 觸發 storage 事件通知管理端
+                localStorage.setItem('優品360_last_update', new Date().toISOString());
+            }
+
+            if (!record || database.length === 0) {
+                resultDiv.innerHTML = `
+                    <div class="bg-white rounded-2xl p-6 text-center shadow-lg fade-in">
+                        <i class="fa-solid fa-circle-question text-5xl text-gray-400"></i>
+                        <p class="mt-3 font-bold text-gray-700">查無此 PO 單號</p>
+                        <p class="text-xs text-gray-400 mt-1">請確認單號是否正確，或等待管理端上傳資料</p>
+                        <button onclick="closeResult()" class="mt-4 bg-gray-800 text-white px-5 py-2 rounded-lg text-sm">返回</button>
+                    </div>
+                `;
+                resultDiv.classList.remove('hidden');
+                addLog('❌ 查無單據', 'PO不在預約列表中');
+                return;
+            }
+
+            let isPM = record.hour >= 12;
+            let authCode = isPM ? authPM : authAM;
+
+            if (isPM && isBefore1201) {
+                resultDiv.innerHTML = `
+                    <div class="bg-white rounded-2xl p-6 text-center shadow-lg fade-in">
+                        <i class="fa-solid fa-circle-xmark text-5xl text-red-500"></i>
+                        <p class="mt-3 font-bold text-red-600">不符合預約時間</p>
+                        <p class="text-sm mt-1">下午預約需於中午 12:01 後才能取碼</p>
+                        <div class="mt-3 text-left text-xs bg-red-50 p-3 rounded-lg">
+                            <div>您的預約時間：${formatDisplayTime(record.timeVal)}</div>
+                            <div>目前時間：${timeStr}</div>
+                        </div>
+                        <button onclick="closeResult()" class="mt-4 bg-gray-800 text-white px-5 py-2 rounded-lg text-sm">返回</button>
+                    </div>
+                `;
+                resultDiv.classList.remove('hidden');
+                addLog('⏰ 拒絕取籌', '下午單早到 (12:01前)');
+                return;
+            }
+
+            // 核准
+            resultDiv.innerHTML = `
+                <div class="bg-white rounded-2xl p-6 text-center shadow-lg fade-in">
+                    <i class="fa-solid fa-circle-check text-5xl text-emerald-500"></i>
+                    <p class="mt-3 font-bold text-emerald-600">驗證通過</p>
+                    <div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-5 mt-4">
+                        <div class="text-xs text-gray-500 tracking-wider">排隊機受權碼</div>
+                        <div class="text-5xl font-mono font-bold tracking-wider text-gray-800 my-2">${authCode}</div>
+                        <div class="text-[10px] text-gray-400">請於現場排隊機輸入此密碼</div>
+                    </div>
+                    <div class="mt-4 text-left text-sm bg-gray-50 rounded-xl p-4">
+                        <div class="flex justify-between py-1"><span class="text-gray-500">PO 單號：</span><span class="font-mono font-bold">${record.poNo}</span></div>
+                        <div class="flex justify-between py-1"><span class="text-gray-500">供應商：</span><span>${record.supplier}</span></div>
+                        <div class="flex justify-between py-1"><span class="text-gray-500">預約時間：</span><span>${formatDisplayTime(record.timeVal)}</span></div>
+                        <div class="flex justify-between py-1"><span class="text-gray-500">貨板數量：</span><span>${record.pallets} 板</span></div>
+                    </div>
+                    <button onclick="closeResult()" class="mt-4 bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm w-full">繼續取籌</button>
+                </div>
+            `;
+            resultDiv.classList.remove('hidden');
+            addLog('✅ 核准取籌', `派發受權碼 ${authCode}`);
+            showToast(`取籌成功！受權碼：${authCode}`);
+        }
+
+        function closeResult() {
+            document.getElementById('result-area').classList.add('hidden');
+            document.getElementById('result-area').innerHTML = '';
+            document.getElementById('driver-po').value = '';
+            document.getElementById('driver-po').focus();
+        }
+
+        function showToast(msg) {
+            let toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 2500);
+        }
+
+        // 監聽管理端更新
+        window.addEventListener('storage', (event) => {
+            if (event.key === '優品360_database' || event.key === '優品360_auth') {
+                console.log('管理端已更新，同步中...');
+                syncFromManager();
+                showToast('📡 管理端已更新資料');
+            }
+        });
+
+        // 初始化和定期同步
+        syncFromManager();
+        setInterval(syncFromManager, 5000);
+
+        // 按 Enter 提交
+        document.getElementById('driver-po').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') submitQuery();
+        });
+
+        // 加入簡單動畫
+        const style = document.createElement('style');
+        style.textContent = `.fade-in { animation: fadeIn 0.3s ease; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
