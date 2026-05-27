@@ -52,7 +52,7 @@
             </div>
             <div class="bg-white p-5 rounded-xl shadow border-l-4 border-purple-500">
                 <div class="text-sm text-slate-500">🔢 下一個受權碼</div>
-                <div class="text-xl font-bold text-purple-600" id="next-code-display">A001</div>
+                <div class="text-xl font-bold text-purple-600" id="next-code-display">A001 / P001</div>
             </div>
         </div>
 
@@ -95,7 +95,7 @@
                         <div class="bg-gray-50 p-3 rounded-lg">
                             <div class="flex justify-between items-center">
                                 <span class="text-xs font-bold text-gray-600">📊 當前計數器</span>
-                                <button onclick="resetCounter()" class="text-xs bg-gray-200 px-2 py-1 rounded">重置計數</button>
+                                <button onclick="resetCounter()" class="text-xs bg-gray-200 px-2 py-1 rounded hover:bg-gray-300">重置計數</button>
                             </div>
                             <div class="flex gap-4 mt-2 text-center">
                                 <div class="flex-1 bg-blue-100 rounded p-2">
@@ -137,7 +137,7 @@
                                 <tr class="border-b"><th class="p-3 text-left font-bold">PO No</th><th class="p-3 text-left font-bold">供應商</th><th class="p-3 text-left font-bold">預約時間</th><th class="p-3 text-left font-bold">貨板數</th></tr>
                             </thead>
                             <tbody id="po-table" class="divide-y divide-slate-100"></tbody>
-                         </table>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -158,15 +158,15 @@
                     </div>
                 </div>
                 
-                <!-- 司機同步設定 -->
-                <div class="bg-white rounded-xl shadow p-6">
+                <!-- 司機同步設定（修正版：確保 QR Code 正常生成） -->
+                <div class="bg-white rounded-xl shadow p-6" id="sync-card">
                     <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-share-alt"></i> 司機同步設定</h2>
-                    <p class="text-xs text-gray-500 mb-3">⚠️ 先上傳 CSV 再生成同步 QR Code</p>
-                    <button onclick="generateSyncCode()" class="w-full bg-blue-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                    <p class="text-xs text-amber-600 mb-3">⚠️ 請先上傳 CSV 檔案，再點擊下方按鈕生成 QR Code</p>
+                    <button id="generate-sync-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-qrcode"></i> 生成同步 QR Code
                     </button>
                     <div id="sync-code-display" class="hidden mt-4 p-4 bg-blue-50 rounded-lg text-center">
-                        <div class="text-xs text-blue-600 mb-1">司機用手機掃描 QR Code 同步</div>
+                        <div class="text-xs text-blue-600 mb-1">📱 司機用手機掃描 QR Code 同步</div>
                         <div id="sync-qrcode" class="flex justify-center my-3"></div>
                         <div id="sync-code-value" class="text-2xl font-mono font-bold tracking-wider text-blue-800 mb-2"></div>
                         <div id="sync-link" class="text-center text-xs break-all text-blue-600"></div>
@@ -176,8 +176,12 @@
 
                 <div class="bg-white rounded-xl shadow p-6">
                     <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-arrows-rotate"></i> 系統控制</h2>
-                    <button onclick="manualReset()" class="w-full bg-red-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-red-700 transition"><i class="fa-solid fa-trash-can"></i> 手動重置（清空記錄）</button>
-                    <p class="text-xs text-gray-400 mt-3 text-center"><i class="fa-regular fa-clock"></i> 系統每日 00:00 自動重置</p>
+                    <button id="manual-reset-btn" class="w-full bg-red-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-red-700 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-trash-can"></i> 手動重置（只清空日誌，保留預約資料）
+                    </button>
+                    <p class="text-xs text-gray-400 mt-3 text-center">
+                        <i class="fa-regular fa-clock"></i> 系統每日 00:00 自動重置日誌，受權碼計數連續
+                    </p>
                 </div>
             </div>
         </div>
@@ -186,6 +190,7 @@
     <div id="toast" class="fixed bottom-5 right-5 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg hidden z-50"></div>
 
     <script>
+        // ==================== 全域變數 ====================
         let database = [];
         let authStartAM = "A001", authStartPM = "P001";
         let currentWarehouse = "A";
@@ -195,13 +200,14 @@
         const COUNTER_KEY = '優品360_auth_counter';
         const SETTINGS_KEY = '優品360_auth_settings';
 
+        // ==================== 受權碼生成 ====================
         function getNextAuthCode(isPM) {
             if (isPM) { pmCounter++; return `P${pmCounter.toString().padStart(3, '0')}`; }
             else { amCounter++; return `A${amCounter.toString().padStart(3, '0')}`; }
         }
 
         function resetCounter() {
-            if (!confirm('確認重置計數器？')) return;
+            if (!confirm('確認重置計數器？重置後下一個受權碼將從起始碼開始')) return;
             let amMatch = authStartAM.match(/\d+/), pmMatch = authStartPM.match(/\d+/);
             amCounter = amMatch ? parseInt(amMatch[0]) - 1 : 0;
             pmCounter = pmMatch ? parseInt(pmMatch[0]) - 1 : 0;
@@ -222,28 +228,55 @@
             updateCounterDisplay();
         }
 
-        // 生成同步 QR Code (4位 + 資料嵌入URL)
+        // ==================== 生成同步 QR Code（修正版）====================
         function generateSyncCode() {
-            if (database.length === 0) { showToast('⚠️ 請先上載 CSV 檔案'); return; }
-            let syncData = { database, authStartAM, authStartPM, amCounter, pmCounter, timestamp: new Date().toISOString() };
+            if (database.length === 0) { 
+                showToast('⚠️ 請先上載 CSV 檔案後再生成同步 QR Code'); 
+                return; 
+            }
+            
+            let syncData = {
+                database: database,
+                authStartAM: authStartAM,
+                authStartPM: authStartPM,
+                amCounter: amCounter,
+                pmCounter: pmCounter,
+                timestamp: new Date().toISOString()
+            };
+            
             let encodedData = btoa(encodeURIComponent(JSON.stringify(syncData)));
             let syncCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+            
             localStorage.setItem(`優品360_sync_${syncCode}`, JSON.stringify(syncData));
+            
             let driverBaseUrl = `https://alexlam50.github.io/360_car_booking/driver.html`;
             let syncUrl = `${driverBaseUrl}?sync=${encodedData}&code=${syncCode}`;
+            
             let displayDiv = document.getElementById('sync-code-display');
-            document.getElementById('sync-code-value').innerText = syncCode;
-            document.getElementById('sync-link').innerHTML = `<a href="${syncUrl}" target="_blank" class="text-blue-600 text-xs break-all">🔗 按此複製連結</a>`;
+            let codeSpan = document.getElementById('sync-code-value');
+            let linkDiv = document.getElementById('sync-link');
             let qrContainer = document.getElementById('sync-qrcode');
-            qrContainer.innerHTML = '';
-            new QRCode(qrContainer, { text: syncUrl, width: 160, height: 160 });
+            
+            codeSpan.innerText = syncCode;
+            linkDiv.innerHTML = `<a href="${syncUrl}" target="_blank" class="text-blue-600 text-xs break-all">🔗 按此複製連結</a>`;
+            
+            if (qrContainer) {
+                qrContainer.innerHTML = '';
+                new QRCode(qrContainer, { text: syncUrl, width: 160, height: 160 });
+            }
+            
             displayDiv.classList.remove('hidden');
             showToast(`✅ 同步 QR Code 已生成，有效期5分鐘`);
             addLogToArray('系統', '生成同步碼', syncCode);
-            setTimeout(() => { displayDiv.classList.add('hidden'); localStorage.removeItem(`優品360_sync_${syncCode}`); }, 300000);
+            
+            setTimeout(() => { 
+                displayDiv.classList.add('hidden'); 
+                localStorage.removeItem(`優品360_sync_${syncCode}`);
+                showToast('⚠️ 同步碼已過期');
+            }, 300000);
         }
 
-        // CSV 解析
+        // ==================== CSV 解析 ====================
         function detectColumns(headers) {
             const patterns = { poNo: [/^po\s*no$/i, /^採購單號$/i, /^單號$/i], supplier: [/^供應商/i, /^supplier/i], time: [/^時間$/i, /^預約時間$/i], pallets: [/^貨板/i, /^板數$/i] };
             let colMap = { poNo: -1, supplier: -1, time: -1, pallets: -1 };
@@ -255,108 +288,205 @@
             if (colMap.poNo === -1 && headers.length > 0) colMap.poNo = 0;
             return colMap;
         }
-        function parseTimeToHour(t) { if (!t) return NaN; let s=String(t).trim(), isPM=s.includes('下午'), m=s.match(/\d+/g); if(!m) return NaN; let h=parseInt(m[0]); if(isPM && h<12) h+=12; if(m[0]&&m[0].length===4) h=parseInt(m[0].substring(0,2)); return h; }
-        function formatDisplayTime(r) { if(!r) return '-'; let h=parseTimeToHour(r); return isNaN(h)?String(r):h+':00'; }
-        function parseCSVLine(l){ let r=[],c='',q=false; for(let i=0;i<l.length;i++){let ch=l[i]; if(ch==='"') q=!q; else if(ch===','&&!q){r.push(c.trim());c='';}else c+=ch;} r.push(c.trim()); return r; }
-        function parseUploadedData(data,fileName){
-            let lines=data.split(/\r?\n/); if(lines.length<2) return false;
-            let headers=parseCSVLine(lines[0]), colMap=detectColumns(headers), newDB=[];
-            for(let i=1;i<lines.length;i++){ if(!lines[i].trim()) continue; let row=parseCSVLine(lines[i]); if(row.length===0) continue;
-                let poNo=colMap.poNo>=0?(row[colMap.poNo]||'').toString().trim():''; if(!poNo||poNo==='PO No') continue;
-                newDB.push({ poNo:poNo.toUpperCase(), supplier:colMap.supplier>=0?(row[colMap.supplier]||'').trim():'不明供應商', timeVal:colMap.time>=0?(row[colMap.time]||'').trim():'', pallets:colMap.pallets>=0?(row[colMap.pallets]||'').trim():'0', hour:parseTimeToHour(colMap.time>=0?row[colMap.time]:'') }); }
-            if(newDB.length===0){ showToast('找不到有效的 PO 單號'); return false; }
-            database=newDB; updateUI(); syncToLocalStorage(); showToast(`成功載入 ${database.length} 筆資料`);
-            document.getElementById('file-status').classList.remove('hidden'); document.getElementById('file-name').innerText=`${fileName} (${database.length}筆)`;
+
+        function parseTimeToHour(t) { 
+            if (!t) return NaN; 
+            let s = String(t).trim(), isPM = s.includes('下午'), m = s.match(/\d+/g); 
+            if (!m) return NaN; 
+            let h = parseInt(m[0]); 
+            if (isPM && h < 12) h += 12; 
+            if (m[0] && m[0].length === 4) h = parseInt(m[0].substring(0, 2)); 
+            return h; 
+        }
+
+        function formatDisplayTime(r) { 
+            if (!r) return '-'; 
+            let h = parseTimeToHour(r); 
+            return isNaN(h) ? String(r) : h + ':00'; 
+        }
+
+        function parseCSVLine(l) {
+            let r = [], c = '', q = false;
+            for (let i = 0; i < l.length; i++) {
+                let ch = l[i];
+                if (ch === '"') q = !q;
+                else if (ch === ',' && !q) { r.push(c.trim()); c = ''; }
+                else c += ch;
+            }
+            r.push(c.trim());
+            return r;
+        }
+
+        function parseUploadedData(data, fileName) {
+            let lines = data.split(/\r?\n/);
+            if (lines.length < 2) return false;
+            let headers = parseCSVLine(lines[0]), colMap = detectColumns(headers), newDB = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                let row = parseCSVLine(lines[i]);
+                if (row.length === 0) continue;
+                let poNo = colMap.poNo >= 0 ? (row[colMap.poNo] || '').toString().trim() : '';
+                if (!poNo || poNo === '' || poNo === 'PO No') continue;
+                newDB.push({
+                    poNo: poNo.toUpperCase(),
+                    supplier: colMap.supplier >= 0 ? (row[colMap.supplier] || '').trim() : '不明供應商',
+                    timeVal: colMap.time >= 0 ? (row[colMap.time] || '').trim() : '',
+                    pallets: colMap.pallets >= 0 ? (row[colMap.pallets] || '').trim() : '0',
+                    hour: parseTimeToHour(colMap.time >= 0 ? row[colMap.time] : '')
+                });
+            }
+            if (newDB.length === 0) { showToast('找不到有效的 PO 單號'); return false; }
+            database = newDB;
+            updateUI();
+            syncToLocalStorage();
+            showToast(`成功載入 ${database.length} 筆預約資料`);
+            document.getElementById('file-status').classList.remove('hidden');
+            document.getElementById('file-name').innerText = `${fileName} (${database.length}筆)`;
             return true;
         }
-        async function handleFile(f){ let t=await f.text(); parseUploadedData(t,f.name); }
-        function handleExcel(f){ const r=new FileReader(); r.onload=e=>{ const d=new Uint8Array(e.target.result), w=XLSX.read(d,{type:'array'}), s=w.Sheets[w.SheetNames[0]], csv=XLSX.utils.sheet_to_csv(s); parseUploadedData(csv,f.name); }; r.readAsArrayBuffer(f); }
 
-        function updateUI(){
-            document.getElementById('stat-total').innerText=database.length;
-            document.getElementById('stat-pm').innerText=database.filter(d=>d.hour>=12&&!isNaN(d.hour)).length;
+        async function handleFile(f) { let t = await f.text(); parseUploadedData(t, f.name); }
+        function handleExcel(f) {
+            const r = new FileReader();
+            r.onload = e => {
+                const d = new Uint8Array(e.target.result), w = XLSX.read(d, { type: 'array' });
+                const s = w.Sheets[w.SheetNames[0]], csv = XLSX.utils.sheet_to_csv(s);
+                parseUploadedData(csv, f.name);
+            };
+            r.readAsArrayBuffer(f);
+        }
+
+        function updateUI() {
+            document.getElementById('stat-total').innerText = database.length;
+            document.getElementById('stat-pm').innerText = database.filter(d => d.hour >= 12 && !isNaN(d.hour)).length;
             renderTable(); updateLogDisplay();
-            document.getElementById('stat-approved').innerText=stats.approved;
-            document.getElementById('stat-rejected').innerText=stats.rejected;
+            document.getElementById('stat-approved').innerText = stats.approved;
+            document.getElementById('stat-rejected').innerText = stats.rejected;
         }
-        function renderTable(){
-            let tbody=document.getElementById('po-table'), term=document.getElementById('search-input')?.value.toLowerCase()||'', filtered=database.filter(d=>d.poNo.toLowerCase().includes(term)||d.supplier.toLowerCase().includes(term));
-            if(filtered.length===0){ tbody.innerHTML='<tr><td colspan="4" class="p-8 text-center text-gray-400">📭 尚無資料，請上傳 CSV 檔案</td></tr>'; return; }
-            tbody.innerHTML=filtered.map(d=>`<tr class="border-b"><td class="p-3 font-mono font-bold">${escapeHtml(d.poNo)}</td><td class="p-3">${escapeHtml(d.supplier)}</td><td class="p-3"><span class="px-2 py-1 rounded-full text-xs ${d.hour>=12?'bg-amber-100 text-amber-700':'bg-sky-100 text-sky-700'}">${formatDisplayTime(d.timeVal)}</span></td><td class="p-3 text-center">${escapeHtml(d.pallets)}</td></tr>`).join('');
-        }
-        function updateLogDisplay(){
-            let tbody=document.getElementById('log-table');
-            if(scanLogs.length===0){ tbody.innerHTML='<tr><td colspan="4" class="p-8 text-center text-gray-400">📭 暫無核驗記錄</td></tr>'; return; }
-            tbody.innerHTML=scanLogs.slice(0,50).map(l=>`<tr class="border-b"><td class="p-2 text-gray-500">${escapeHtml(l.time)}</td><td class="p-2 font-mono font-bold">${escapeHtml(l.po)}</td><td class="p-2">${escapeHtml(l.status)}</td><td class="p-2 text-xs font-mono font-bold">${escapeHtml(l.remark||'-')}</td></tr>`).join('');
-        }
-        function addLogToArray(po,status,remark){ let time=new Date().toLocaleTimeString('zh-HK'); scanLogs.unshift({time,po,status,remark}); if(scanLogs.length>200) scanLogs.pop(); syncToLocalStorage(); updateLogDisplay(); }
 
-        // 接收司機端記錄
-        function syncDriverLogs(){
+        function renderTable() {
+            let tbody = document.getElementById('po-table'), term = document.getElementById('search-input')?.value.toLowerCase() || '';
+            let filtered = database.filter(d => d.poNo.toLowerCase().includes(term) || d.supplier.toLowerCase().includes(term));
+            if (filtered.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400">📭 尚無資料，請上傳 CSV 檔案</td></tr>'; return; }
+            tbody.innerHTML = filtered.map(d => `<tr class="border-b"><td class="p-3 font-mono font-bold">${escapeHtml(d.poNo)}</td><td class="p-3">${escapeHtml(d.supplier)}</td><td class="p-3"><span class="px-2 py-1 rounded-full text-xs ${d.hour >= 12 ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'}">${formatDisplayTime(d.timeVal)}</span></td><td class="p-3 text-center">${escapeHtml(d.pallets)}</td></tr>`).join('');
+        }
+
+        function updateLogDisplay() {
+            let tbody = document.getElementById('log-table');
+            if (scanLogs.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400">📭 暫無核驗記錄</td></tr>'; return; }
+            tbody.innerHTML = scanLogs.slice(0, 50).map(l => `<tr class="border-b"><td class="p-2 text-gray-500">${escapeHtml(l.time)}</td><td class="p-2 font-mono font-bold">${escapeHtml(l.po)}</td><td class="p-2">${escapeHtml(l.status)}</td><td class="p-2 text-xs font-mono font-bold">${escapeHtml(l.remark || '-')}</td></tr>`).join('');
+        }
+
+        function addLogToArray(po, status, remark) {
+            let time = new Date().toLocaleTimeString('zh-HK');
+            scanLogs.unshift({ time, po, status, remark });
+            if (scanLogs.length > 200) scanLogs.pop();
+            syncToLocalStorage(); updateLogDisplay();
+        }
+
+        function syncDriverLogs() {
             let storedLogs = localStorage.getItem('優品360_logs');
-            if(storedLogs){
+            if (storedLogs) {
                 let newLogs = JSON.parse(storedLogs);
-                if(JSON.stringify(scanLogs) !== JSON.stringify(newLogs)){ scanLogs = newLogs; updateLogDisplay(); }
+                if (JSON.stringify(scanLogs) !== JSON.stringify(newLogs)) { scanLogs = newLogs; updateLogDisplay(); }
             }
             let storedStats = localStorage.getItem('優品360_stats');
-            if(storedStats){ let newStats = JSON.parse(storedStats); stats = newStats; updateUI(); }
+            if (storedStats) { let newStats = JSON.parse(storedStats); stats = newStats; updateUI(); }
             let storedCounter = localStorage.getItem(COUNTER_KEY);
-            if(storedCounter){ let c=JSON.parse(storedCounter); amCounter=c.am||0; pmCounter=c.pm||0; updateCounterDisplay(); }
+            if (storedCounter) { let c = JSON.parse(storedCounter); amCounter = c.am || 0; pmCounter = c.pm || 0; updateCounterDisplay(); }
         }
 
-        function saveAuthSettings(){
-            let newAM=document.getElementById('auth-start-am').value.toUpperCase(), newPM=document.getElementById('auth-start-pm').value.toUpperCase();
-            if(!/^[A]\d{3}$/.test(newAM)){ showToast('上午格式 A+3位數字'); return; }
-            if(!/^[P]\d{3}$/.test(newPM)){ showToast('下午格式 P+3位數字'); return; }
-            authStartAM=newAM; authStartPM=newPM; currentWarehouse=document.getElementById('warehouse-select').value;
-            let amNum=parseInt(authStartAM.match(/\d+/)[0]), pmNum=parseInt(authStartPM.match(/\d+/)[0]);
-            amCounter=amNum-1; pmCounter=pmNum-1;
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify({authStartAM,authStartPM,currentWarehouse}));
-            syncCounterToStorage(); updateCounterDisplay(); syncToLocalStorage(); showToast('✅ 設定已儲存'); addLogToArray('系統','受權碼設定',`AM:${authStartAM} PM:${authStartPM}`);
-        }
-        function loadAuthSettings(){
-            let s=localStorage.getItem(SETTINGS_KEY);
-            if(s){ let set=JSON.parse(s); authStartAM=set.authStartAM||"A001"; authStartPM=set.authStartPM||"P001"; currentWarehouse=set.currentWarehouse||"A";
-                document.getElementById('auth-start-am').value=authStartAM; document.getElementById('auth-start-pm').value=authStartPM; document.getElementById('warehouse-select').value=currentWarehouse; }
+        function saveAuthSettings() {
+            let newAM = document.getElementById('auth-start-am').value.toUpperCase(), newPM = document.getElementById('auth-start-pm').value.toUpperCase();
+            if (!/^[A]\d{3}$/.test(newAM)) { showToast('上午格式 A+3位數字 (如 A001)'); return; }
+            if (!/^[P]\d{3}$/.test(newPM)) { showToast('下午格式 P+3位數字 (如 P001)'); return; }
+            authStartAM = newAM; authStartPM = newPM; currentWarehouse = document.getElementById('warehouse-select').value;
+            let amNum = parseInt(authStartAM.match(/\d+/)[0]), pmNum = parseInt(authStartPM.match(/\d+/)[0]);
+            amCounter = amNum - 1; pmCounter = pmNum - 1;
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify({ authStartAM, authStartPM, currentWarehouse }));
+            syncCounterToStorage(); updateCounterDisplay(); syncToLocalStorage(); showToast('✅ 設定已儲存');
+            addLogToArray('系統', '受權碼設定', `AM:${authStartAM} PM:${authStartPM}`);
         }
 
-        function syncToLocalStorage(){
-            localStorage.setItem('優品360_database',JSON.stringify(database));
-            localStorage.setItem('優品360_logs',JSON.stringify(scanLogs.slice(0,200)));
-            localStorage.setItem('優品360_stats',JSON.stringify(stats));
-            localStorage.setItem('優品360_last_update',new Date().toISOString());
+        function loadAuthSettings() {
+            let s = localStorage.getItem(SETTINGS_KEY);
+            if (s) { let set = JSON.parse(s); authStartAM = set.authStartAM || "A001"; authStartPM = set.authStartPM || "P001"; currentWarehouse = set.currentWarehouse || "A";
+                document.getElementById('auth-start-am').value = authStartAM; document.getElementById('auth-start-pm').value = authStartPM;
+                document.getElementById('warehouse-select').value = currentWarehouse; }
+        }
+
+        function syncToLocalStorage() {
+            localStorage.setItem('優品360_database', JSON.stringify(database));
+            localStorage.setItem('優品360_logs', JSON.stringify(scanLogs.slice(0, 200)));
+            localStorage.setItem('優品360_stats', JSON.stringify(stats));
+            localStorage.setItem('優品360_last_update', new Date().toISOString());
             syncCounterToStorage();
         }
-        function loadFromLocalStorage(){
-            let db=localStorage.getItem('優品360_database'); if(db) database=JSON.parse(db);
-            let logs=localStorage.getItem('優品360_logs'); if(logs) scanLogs=JSON.parse(logs);
-            let st=localStorage.getItem('優品360_stats'); if(st) stats=JSON.parse(st);
+
+        function loadFromLocalStorage() {
+            let db = localStorage.getItem('優品360_database'); if (db) database = JSON.parse(db);
+            let logs = localStorage.getItem('優品360_logs'); if (logs) scanLogs = JSON.parse(logs);
+            let st = localStorage.getItem('優品360_stats'); if (st) stats = JSON.parse(st);
             loadAuthSettings(); loadCounterFromStorage(); updateUI(); checkAutoReset();
         }
 
-        function checkAutoReset(){
-            let today=new Date().toDateString(), stored=localStorage.getItem('優品360_last_reset_date');
-            if(stored!==today){ if(stored!==null) addLogToArray('系統','自動重置','每日重置'); scanLogs=[]; stats={approved:0,rejected:0}; localStorage.setItem('優品360_last_reset_date',today); syncToLocalStorage(); updateUI(); }
+        // 修正版：只清空日誌和統計，保留預約資料
+        function manualReset() {
+            if (confirm('確認重置？\n\n這將清空：\n- 核驗日誌\n- 統計數字\n\n預約資料和受權碼計數將保留。')) {
+                scanLogs = [];
+                stats = { approved: 0, rejected: 0 };
+                syncToLocalStorage();
+                updateUI();
+                showToast('✅ 已重置日誌和統計，預約資料保留');
+                addLogToArray('系統', '手動重置', '清空日誌和統計');
+            }
         }
-        function manualReset(){ if(confirm('確認重置？')){ scanLogs=[]; stats={approved:0,rejected:0}; syncToLocalStorage(); updateUI(); showToast('✅ 已重置'); addLogToArray('系統','手動重置','清空記錄'); } }
 
-        window.addEventListener('storage',(e)=>{ if(e.key && e.key.startsWith('優品360_')){ loadFromLocalStorage(); syncDriverLogs(); showToast('📡 司機端有新記錄'); } });
-
-        function exportLogs(){ if(scanLogs.length===0){ showToast('暫無記錄'); return; } let csv="時間,PO No,狀態,受權碼\n"+scanLogs.map(l=>`"${l.time}","${l.po}","${l.status}","${l.remark||''}"`).join("\n"); let blob=new Blob(["\uFEFF"+csv],{type:'text/csv'}), link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=`優品360_日誌_${new Date().toISOString().slice(0,10)}.csv`; link.click(); showToast('日誌已匯出'); }
-        function showToast(m){ let t=document.getElementById('toast'); t.innerText=m; t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'),2500); }
-        function escapeHtml(s){ if(!s) return ''; return s.replace(/[&<>]/g,m=>{if(m==='&')return'&amp;';if(m==='<')return'&lt;';if(m==='>')return'&gt;';return m;}); }
-        function setupFileUpload(){
-            let dz=document.getElementById('drop-zone'), fi=document.getElementById('file-input');
-            dz.addEventListener('click',()=>fi.click()); dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('border-red-500','bg-red-50');}); dz.addEventListener('dragleave',()=>dz.classList.remove('border-red-500','bg-red-50'));
-            dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('border-red-500','bg-red-50');let f=e.dataTransfer.files[0]; if(f.name.match(/\.(xlsx|xls)$/i)) handleExcel(f); else handleFile(f);});
-            fi.addEventListener('change',e=>{if(e.target.files[0]){let f=e.target.files[0]; if(f.name.match(/\.(xlsx|xls)$/i)) handleExcel(f); else handleFile(f);}});
+        function checkAutoReset() {
+            let today = new Date().toDateString(), stored = localStorage.getItem('優品360_last_reset_date');
+            if (stored !== today) {
+                if (stored !== null) addLogToArray('系統', '自動重置', '每日00:00重置');
+                scanLogs = []; stats = { approved: 0, rejected: 0 };
+                localStorage.setItem('優品360_last_reset_date', today);
+                syncToLocalStorage(); updateUI();
+            }
         }
-        function generateQRCode(){ let url=`https://alexlam50.github.io/360_car_booking/driver.html`; document.getElementById('qrcode').innerHTML=''; new QRCode(document.getElementById('qrcode'),{text:url,width:180,height:180}); }
-        function printQRCode(){ let qr=document.getElementById('qrcode').innerHTML, w=window.open('','_blank'); w.document.write(`<html><head><title>優品360 司機取籌 QR Code</title><style>body{font-family:sans-serif;text-align:center;padding:40px;}.container{border:3px solid #ef4444;padding:30px;border-radius:20px;display:inline-block;}h1{color:#ef4444;}.qr{margin:20px auto;}</style></head><body onload="window.print()"><div class="container"><h1>優品360 司機自助取籌</h1><div class="qr">${qr}</div><div class="footer">掃碼後輸入PO單號領取受權碼</div><div>${new Date().toLocaleDateString()}</div></div></body></html>`); w.document.close(); }
 
-        document.getElementById('search-input')?.addEventListener('input',()=>renderTable());
+        window.addEventListener('storage', (e) => { 
+            if (e.key && e.key.startsWith('優品360_')) { loadFromLocalStorage(); syncDriverLogs(); showToast('📡 司機端有新記錄'); } 
+        });
+
+        function exportLogs() {
+            if (scanLogs.length === 0) { showToast('暫無記錄'); return; }
+            let csv = "時間,PO No,狀態,受權碼\n" + scanLogs.map(l => `"${l.time}","${l.po}","${l.status}","${l.remark || ''}"`).join("\n");
+            let blob = new Blob(["\uFEFF" + csv], { type: 'text/csv' }), link = document.createElement('a');
+            link.href = URL.createObjectURL(blob); link.download = `優品360_日誌_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click(); showToast('日誌已匯出');
+        }
+
+        function showToast(m) { let t = document.getElementById('toast'); t.innerText = m; t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 2500); }
+        function escapeHtml(s) { if (!s) return ''; return s.replace(/[&<>]/g, m => { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; }); }
+
+        function setupFileUpload() {
+            let dz = document.getElementById('drop-zone'), fi = document.getElementById('file-input');
+            dz.addEventListener('click', () => fi.click());
+            dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('border-red-500', 'bg-red-50'); });
+            dz.addEventListener('dragleave', () => dz.classList.remove('border-red-500', 'bg-red-50'));
+            dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('border-red-500', 'bg-red-50'); let f = e.dataTransfer.files[0]; if (f.name.match(/\.(xlsx|xls)$/i)) handleExcel(f); else handleFile(f); });
+            fi.addEventListener('change', e => { if (e.target.files[0]) { let f = e.target.files[0]; if (f.name.match(/\.(xlsx|xls)$/i)) handleExcel(f); else handleFile(f); } });
+        }
+
+        function generateQRCode() { let url = `https://alexlam50.github.io/360_car_booking/driver.html`; document.getElementById('qrcode').innerHTML = ''; new QRCode(document.getElementById('qrcode'), { text: url, width: 180, height: 180 }); }
+        function printQRCode() { let qr = document.getElementById('qrcode').innerHTML, w = window.open('', '_blank'); w.document.write(`<html><head><title>優品360 司機取籌 QR Code</title><style>body{font-family:sans-serif;text-align:center;padding:40px;}.container{border:3px solid #ef4444;padding:30px;border-radius:20px;display:inline-block;}h1{color:#ef4444;}.qr{margin:20px auto;}</style></head><body onload="window.print()"><div class="container"><h1>優品360 司機自助取籌</h1><div class="qr">${qr}</div><div class="footer">掃碼後輸入PO單號領取受權碼</div><div>${new Date().toLocaleDateString()}</div></div></body></html>`); w.document.close(); }
+
+        document.getElementById('search-input')?.addEventListener('input', () => renderTable());
+        
+        // 綁定按鈕事件
+        document.getElementById('generate-sync-btn').addEventListener('click', generateSyncCode);
+        document.getElementById('manual-reset-btn').addEventListener('click', manualReset);
+        
         setupFileUpload(); generateQRCode(); loadFromLocalStorage(); syncDriverLogs();
-        setInterval(()=>{ loadFromLocalStorage(); syncDriverLogs(); checkAutoReset(); }, 3000);
+        setInterval(() => { loadFromLocalStorage(); syncDriverLogs(); checkAutoReset(); }, 3000);
     </script>
 </body>
 </html>
